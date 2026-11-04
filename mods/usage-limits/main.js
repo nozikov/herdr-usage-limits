@@ -1,13 +1,13 @@
-// Usage limits: every Claude Code / Codex limit window in the status bar,
-// with a checkbox popup (click the block) to choose what shows.
+// Usage limits: every Claude Code / Codex limit window in the status bar, and one
+// panel on hover: the details, and behind ⚙ the checkboxes to choose what shows.
 //
 // Data comes from small helpers that run the CLIs themselves (helpers/*.sh);
 // this mod never reads a token. Everything below main.js is pure and tested.
 import { View, div, image, svg } from "gpui-kit";
-import { h_flex, v_flex } from "gpui-base";
-import { exec, theme, run, props, shared, setShared, appHome, openOverlay, closeOverlay } from "herdr";
+import { HoverCard, h_flex, v_flex } from "gpui-base";
+import { exec, theme, props, shared, setShared, appHome } from "herdr";
 import { PROVIDERS } from "./providers/index.js";
-import { barModel, chooseDensity, tooltipText } from "./lib/view.js";
+import { barModel, cardModel, chooseDensity, panelOnEnter } from "./lib/view.js";
 import { effectivePrefs, isShown, toggleProvider, toggleShowResetTime, toggleWindow } from "./lib/prefs.js";
 import { nextState } from "./lib/state.js";
 
@@ -19,12 +19,13 @@ const FETCH_EVERY = 5 * 60;       // s, installed providers
 const MISSING_EVERY = 60 * 60;    // s, not-installed providers
 const REFRESH_COOLDOWN = 30;      // s
 const BAR_W = 30;
-const POPUP_BASE_H = 118;          // px: header, footer, padding, the options row and its rule
-const POPUP_ROW_H = 27;            // px, one provider or window row
+const PANEL_W = 340;
+const PANEL_BAR_W = 130;
+const PANEL_OPEN_DELAY = 350;       // ms, so passing over the bar doesn't flash it
+const PANEL_CLOSE_DELAY = 300;      // ms, lets the pointer cross from the bar to the card
 
 const now = () => Math.floor(Date.now() / 1000);
 const states = () => shared(KEY_STATE) ?? {};
-const presets = (p) => ({ hidden: p?.hidden ?? [], hiddenWindows: p?.hiddenWindows ?? [], showResetTime: p?.showResetTime === true });
 
 function levelColor(level, t) {
   if (level === "hot") return t.ansi1 ?? t.blocked;
@@ -32,12 +33,19 @@ function levelColor(level, t) {
   return t.ansi2 ?? t.working;
 }
 
+const textColor = (level, text, t) => (level === "ok" ? (text === "—" ? t.dim : t.foreground) : levelColor(level, t));
+
+function usageBar(width, fill, tick, color, t) {
+  return div().relative().w(width).h(4).rounded(2).bg(t.border).flex_none()
+    .child(div().absolute().left(0).top(0).h(4).rounded(2).w(Math.round(width * fill)).bg(color))
+    .when(tick != null, (b) => b.child(div().absolute().top(-2).left(Math.round(width * tick)).w(1).h(8).bg(t.foreground).opacity(0.75)));
+}
+
 export default class UsageLimits extends View {
   init(_props, cx) {
-    // Herdr's props come from props(), not init's first argument (shipped mods ignore it too).
-    this.isSettings = props()?.view === "settings";
-    if (this.isSettings) return;
     this.width = 0;
+    this.panel = "limits"; // or "settings"
+    this.leftAt = null;    // ms, when the pointer left the bar and the panel
     this.lastFetch = {};   // providerId → epoch s of last attempt
     this.busy = {};        // providerId → fetch in flight
     this.seenRefresh = shared(KEY_REFRESH) ?? 0;
@@ -76,16 +84,33 @@ export default class UsageLimits extends View {
     });
   }
 
-  prefs() {
-    return effectivePrefs(shared(KEY_PREFS), this.isSettings ? props()?.presets : props());
+  cooling() {
+    return now() - Math.floor((shared(KEY_REFRESH) ?? 0) / 1000) < REFRESH_COOLDOWN;
   }
 
-  openSettings() {
-    const rows = PROVIDERS.reduce((n, p) => {
-      const s = states()[p.id];
-      return n + 1 + ((s?.report?.status === "ok" ? s.report : s?.lastGood)?.windows.length ?? 0);
-    }, 0);
-    openOverlay({ kind: "popup", mod: MOD, props: { view: "settings", presets: presets(props()) }, width: 300, height: POPUP_BASE_H + rows * POPUP_ROW_H });
+  refresh(cx) {
+    if (!this.cooling()) setShared(KEY_REFRESH, Date.now());
+    cx.notify();
+  }
+
+  // Herdr's props come from props(), not init's first argument (shipped mods ignore it too).
+  prefs() {
+    return effectivePrefs(shared(KEY_PREFS), props());
+  }
+
+  hover(on, cx) {
+    if (!on) {
+      this.leftAt = Date.now();
+      return;
+    }
+    this.panel = panelOnEnter(this.panel, this.leftAt, Date.now(), PANEL_CLOSE_DELAY);
+    this.leftAt = null;
+    cx.notify();
+  }
+
+  show(panel, cx) {
+    this.panel = panel;
+    cx.notify();
   }
 
   // ---------- status bar ----------
@@ -94,11 +119,8 @@ export default class UsageLimits extends View {
     const color = levelColor(s.level, t);
     return h_flex().gap(5).items_center().flex_none()
       .when(density < 2, (e) => e.child(div().text_size(10.5).text_color(t.dim).child(s.short)))
-      .when(density === 0, (e) => e.child(
-        div().relative().w(BAR_W).h(4).rounded(2).bg(t.border)
-          .child(div().absolute().left(0).top(0).h(4).rounded(2).w(Math.round(BAR_W * s.fill)).bg(color))
-          .when(s.tick != null, (b) => b.child(div().absolute().top(-2).left(Math.round(BAR_W * s.tick)).w(1).h(8).bg(t.foreground).opacity(0.75)))))
-      .child(div().whitespace_nowrap().text_color(s.level === "ok" ? (s.text === "—" ? t.dim : t.foreground) : color).child(density === 3 ? s.brief : s.text));
+      .when(density === 0, (e) => e.child(usageBar(BAR_W, s.fill, s.tick, color, t)))
+      .child(div().whitespace_nowrap().text_color(textColor(s.level, s.text, t)).child(density === 3 ? s.brief : s.text));
   }
 
   renderBar(cx) {
@@ -109,27 +131,76 @@ export default class UsageLimits extends View {
     const root = h_flex().id("root").size_full().px(12).items_center().justify_end().overflow_hidden()
       .bg(t.chrome).border_t(1).border_color(t.border).text_size(11.8).text_color(t.muted)
       .on_size_change((size, cx) => { this.width = size.width; cx.notify(); });
-    // Only the limits themselves open the popup, not the empty rest of the block.
-    const content = h_flex().id("ul-content").gap(14).items_center().flex_none().cursor_pointer()
-      .on_click(() => this.openSettings());
-    if (model.empty) {
-      return root.child(content.child(div().id("ul-empty").tooltip("Usage limits: everything is hidden. Click to choose.").child(svg(`mods/${MOD}/icons/gauge.svg`).size(14))));
-    }
+    // Only the limits themselves open the panel, not the empty rest of the block.
+    const content = h_flex().id("ul-content").gap(14).items_center().flex_none().on_hover((on, cx) => this.hover(on, cx));
+    if (model.empty) content.child(div().id("ul-empty").child(svg(`mods/${MOD}/icons/gauge.svg`).size(14)));
     model.groups.forEach((g, i) => {
-      const p = PROVIDERS.find((x) => x.id === g.providerId);
       if (i > 0) content.child(div().w(1).h(14).bg(t.border).flex_none());
       content.child(
         h_flex().id(`ul-${g.providerId}`).gap(density === 0 ? 10 : 8).items_center().flex_none()
           .opacity(g.dim ? 0.55 : 1)
-          .tooltip(tooltipText(p, st[g.providerId] ?? { report: null, lastGood: null, installed: null }, now()))
           .child(image(g.icon).size(13))
           .when(g.mark != null, (e) => e.child(div().text_color(t.dim).child(g.mark)))
           .children(g.segments.map((s) => this.segment(s, density, t))));
     });
-    return root.child(content);
+    const panel = cardModel(st, this.prefs(), now());
+    // With everything hidden there are no limits to show, and settings are the way back.
+    const body = this.panel === "settings" || panel.empty ? this.settings(!panel.empty, t) : this.limits(panel, t);
+    return root.child(HoverCard.new("ul-panel").anchor("bottom_right").open_delay(PANEL_OPEN_DELAY).close_delay(PANEL_CLOSE_DELAY)
+      .trigger(content)
+      .content(body));
   }
 
-  // ---------- settings popup ----------
+  // ---------- panel: limits ----------
+
+  cardRow(r, t) {
+    return v_flex().gap(3)
+      .child(h_flex().gap(8).items_center()
+        .child(div().flex_1().min_w(0).truncate().text_color(t.muted).child(r.long))
+        .child(usageBar(PANEL_BAR_W, r.fill, r.tick, levelColor(r.level, t), t))
+        .child(div().w(36).flex_none().flex().justify_end().whitespace_nowrap().text_color(textColor(r.level, r.percent, t)).child(r.percent)))
+      .when(r.detail !== "", (e) => e.child(div().text_size(11).text_color(t.dim).truncate().child(r.detail)));
+  }
+
+  cardGroup(g, t) {
+    return v_flex().gap(8)
+      .child(h_flex().gap(6).items_center()
+        .child(image(g.icon).size(13))
+        .child(div().flex_none().font_semibold().child(g.name))
+        .when(g.plan != null, (e) => e.child(div().flex_none().text_color(t.dim).child(g.plan)))
+        .child(div().flex_1())
+        .child(div().min_w(0).truncate().text_size(11).text_color(g.failed ? levelColor("hot", t) : t.dim).child(g.status)))
+      .when(g.age != null, (e) => e.child(div().text_size(11).text_color(t.dim).child(g.age)))
+      .child(v_flex().gap(8).opacity(g.dim ? 0.55 : 1).children(g.rows.map((r) => this.cardRow(r, t))));
+  }
+
+  iconButton(id, icon, label, enabled, onClick, t) {
+    return div().id(id).size(24).rounded(5).flex().items_center().justify_center().tooltip(label)
+      .when(enabled, (e) => e.cursor_pointer().hover((s) => s.bg(t.hover)).on_click((_e, cx) => onClick(cx)))
+      .child(svg(`mods/${MOD}/icons/${icon}.svg`).size(14).text_color(enabled ? t.muted : t.dim));
+  }
+
+  shell(t) {
+    return v_flex().id("ul-panel-body").w(PANEL_W).p(12).gap(10).rounded(8).border(1).border_color(t.border).bg(t.popover).shadow_lg()
+      .text_size(12).text_color(t.foreground)
+      .on_hover((on, cx) => this.hover(on, cx));
+  }
+
+  limits(model, t) {
+    const rule = () => div().h(1).bg(t.border).flex_none();
+    const body = this.shell(t);
+    model.groups.forEach((g, i) => {
+      if (i > 0) body.child(rule());
+      body.child(this.cardGroup(g, t));
+    });
+    const cooling = this.cooling();
+    return body.child(rule())
+      .child(h_flex().gap(2).justify_end().items_center()
+        .child(this.iconButton("ul-refresh", "refresh", cooling ? "Refreshing…" : "Refresh now", !cooling, (cx) => this.refresh(cx), t))
+        .child(this.iconButton("ul-settings", "gear", "Settings", true, (cx) => this.show("settings", cx), t)));
+  }
+
+  // ---------- panel: settings ----------
 
   check(id, on, label, onToggle, t, indent = 0, extra = null) {
     return h_flex().id(id).gap(8).items_center().pl(indent).py(3).rounded(4).cursor_pointer()
@@ -141,13 +212,10 @@ export default class UsageLimits extends View {
       .when(extra != null, (e) => e.child(div().text_color(t.dim).truncate().child(extra)));
   }
 
-  renderSettings(cx) {
-    const t = theme();
+  settings(canGoBack, t) {
     const prefs = this.prefs();
     const st = states();
     const save = (p) => setShared(KEY_PREFS, p);
-    const sinceRefresh = now() - Math.floor((shared(KEY_REFRESH) ?? 0) / 1000);
-    const cooling = sinceRefresh < REFRESH_COOLDOWN;
     const rows = [];
     for (const p of PROVIDERS) {
       const s = st[p.id] ?? {};
@@ -161,24 +229,18 @@ export default class UsageLimits extends View {
           () => save(toggleWindow(this.prefs(), p.id, w.id)), t, 21));
       }
     }
-    return v_flex().id("settings").size_full().p(12).gap(6).bg(t.popover).text_size(12.5).text_color(t.foreground)
-      .child(h_flex().justify_between().items_center()
-        .child(div().font_semibold().child("Usage limits"))
-        .child(div().id("refresh").px(8).py(3).rounded(5).border(1).border_color(t.border).text_size(11.5)
-          .text_color(cooling ? t.dim : t.foreground)
-          .when(!cooling, (e) => e.cursor_pointer().hover((s) => s.bg(t.hover))
-            .on_click((_e, cx) => { setShared(KEY_REFRESH, Date.now()); cx.notify(); }))
-          .child(cooling ? "Refreshing…" : "Refresh now")))
+    return this.shell(t)
+      .child(h_flex().gap(6).items_center().h(24)
+        .when(canGoBack, (e) => e.child(this.iconButton("ul-back", "back", "Back to limits", true, (cx) => this.show("limits", cx), t)))
+        .child(div().font_semibold().child("Settings")))
       .child(v_flex().gap(1).children(rows))
       .child(div().h(1).bg(t.border).flex_none())
       .child(this.check("opt-reset-time", prefs.showResetTime, [div().text_color(t.foreground).child("Always show time to reset")],
         () => save(toggleShowResetTime(this.prefs())), t))
-      .child(div().flex_1())
       .child(div().text_size(10.5).text_color(t.dim).child("Data: claude CLI · codex app-server. No tokens are read."));
   }
 
   render(cx) {
-    if (this.isSettings) return this.renderSettings(cx);
     const asked = shared(KEY_REFRESH) ?? 0;
     if (asked !== this.seenRefresh) {
       this.seenRefresh = asked;

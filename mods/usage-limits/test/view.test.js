@@ -1,7 +1,7 @@
 process.env.TZ = "UTC";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { segmentView, tooltipText } from "../lib/view.js";
+import { segmentView } from "../lib/view.js";
 import claude from "../providers/claude.js";
 import { read } from "./_util.js";
 
@@ -37,33 +37,8 @@ test("fill is clamped to 0–1", () => {
   assert.equal(segmentView(W({ percent: 130 }), NOW).fill, 1);
 });
 
-test("tooltip lists every window with long labels", () => {
-  const report = { ...claude.parse(read("claude-get-usage.max.json"), NOW - 60), observedAt: NOW - 60 };
-  const text = tooltipText(claude, { report, lastGood: report, installed: true }, NOW);
-  const lines = text.split("\n");
-  assert.equal(lines[0], "Claude · Max · updated just now");
-  assert.match(lines[1], /^5-hour — 6% · resets in 1h 0m \(09:00\)/);
-  assert.match(lines[2], /^Weekly — 50% · resets in 2d 6h \(Fri 14:00\) · /);
-  assert.match(lines[3], /^Weekly · Fable — 3% · resets in 2d 6h \(Fri 14:00\)/);
-  assert.equal(lines.length, 4);
-});
-
-test("tooltip for a failing provider shows the error and the last reading's age", () => {
-  const good = { ...claude.parse(read("claude-get-usage.max.json"), NOW - 1200), observedAt: NOW - 1200 };
-  const bad = { status: "error", message: "Not logged in", plan: null, observedAt: NOW, source: "claude CLI", windows: [] };
-  const lines = tooltipText(claude, { report: bad, lastGood: good, installed: true }, NOW).split("\n");
-  assert.equal(lines[0], "Claude · Not logged in");
-  assert.equal(lines[1], "Last reading 20 min ago:");
-  assert.equal(lines.length, 5);
-});
-
-test("tooltip for a missing or loading provider", () => {
-  assert.equal(tooltipText(claude, { report: null, lastGood: null, installed: false }, NOW), "Claude · not installed");
-  assert.equal(tooltipText(claude, { report: null, lastGood: null, installed: null }, NOW), "Claude · loading…");
-});
-
 // ---- barModel / chooseDensity (Task 4) ----
-import { barModel, chooseDensity } from "../lib/view.js";
+import { barModel, cardModel, chooseDensity, panelOnEnter } from "../lib/view.js";
 import codex from "../providers/codex.js";
 
 const PREFS = { hidden: [], hiddenWindows: [] };
@@ -160,4 +135,97 @@ test("chooseDensity: times of calm windows go last, so providers still fit", () 
   const on = barModel(STATES(), { ...PREFS, showResetTime: true }, NOW);
   assert.equal(chooseDensity(on, 2000), 0);
   assert.equal(chooseDensity(on, 300), 3);
+});
+
+// ---- hover card ----
+
+test("cardModel: a provider's plan, age and one row per window", () => {
+  const s = STATES();
+  s.claude.report = { ...s.claude.report, observedAt: NOW - 60 };
+  const g = cardModel(s, PREFS, NOW).groups[0];
+  assert.deepEqual([g.providerId, g.name, g.plan, g.status, g.failed, g.dim], ["claude", "Claude", "Max", "updated just now", false, false]);
+  assert.deepEqual(g.rows.map((r) => r.long), ["5-hour", "Weekly", "Weekly · Fable"]);
+});
+
+test("cardModel: a row carries percent, level, bar and detail", () => {
+  const report = { status: "ok", plan: "max", observedAt: NOW, source: "x", windows: [W({ percent: 74, resetsAt: NOW + 58 * 3600 })] };
+  const r = cardModel({ claude: { report, lastGood: report, installed: true } }, PREFS, NOW, [claude]).groups[0].rows[0];
+  assert.deepEqual([r.percent, r.level, r.fill], ["74%", "warn", 0.74]);
+  assert.ok(Math.abs(r.tick - 0.6548) < 0.001);
+  assert.equal(r.detail, "2d 10h · Fri 18:00 · on pace");
+});
+
+test("cardModel: a row with no known reset has no detail", () => {
+  const report = { status: "ok", plan: null, observedAt: NOW, source: "x", windows: [W({ resetsAt: null, durationSec: null })] };
+  const g = cardModel({ claude: { report, lastGood: report, installed: true } }, PREFS, NOW, [claude]).groups[0];
+  assert.equal(g.plan, null);
+  assert.equal(g.rows[0].detail, "");
+});
+
+test("cardModel: a passed reset shows '—', never a number", () => {
+  const report = { status: "ok", plan: null, observedAt: NOW, source: "x", windows: [W({ percent: 95, resetsAt: NOW - 1 })] };
+  const r = cardModel({ claude: { report, lastGood: report, installed: true } }, PREFS, NOW, [claude]).groups[0].rows[0];
+  assert.deepEqual([r.percent, r.level, r.fill, r.tick, r.detail], ["—", "ok", 0, null, "reset, waiting for a new reading"]);
+});
+
+test("cardModel: windows hidden from the bar still show", () => {
+  const g = cardModel(STATES(), { ...PREFS, hiddenWindows: ["claude:session"] }, NOW).groups[0];
+  assert.equal(g.rows.length, 3);
+});
+
+test("cardModel: hidden and not installed providers are left out", () => {
+  const s = STATES();
+  s.codex = { report: null, lastGood: null, installed: false };
+  assert.deepEqual(cardModel(s, PREFS, NOW).groups.map((g) => g.providerId), ["claude"]);
+  assert.deepEqual(cardModel(STATES(), { ...PREFS, hidden: ["claude"] }, NOW).groups.map((g) => g.providerId), ["codex"]);
+});
+
+test("cardModel: a failing provider says why and keeps its last reading, dimmed, with its age", () => {
+  const s = STATES();
+  s.claude.lastGood = { ...s.claude.lastGood, observedAt: NOW - 1200 };
+  s.claude.report = { status: "error", message: "Not logged in", plan: null, observedAt: NOW, source: "claude CLI", windows: [] };
+  const g = cardModel(s, PREFS, NOW).groups[0];
+  assert.deepEqual([g.status, g.failed, g.dim, g.age, g.rows.length], ["Not logged in", true, true, "Last reading 20 min ago", 3]);
+});
+
+test("cardModel: a failing provider with no last reading has no rows", () => {
+  const s = STATES();
+  s.claude = { report: { status: "error", message: "offline", plan: null, observedAt: NOW, source: "x", windows: [] }, lastGood: null, installed: true };
+  const g = cardModel(s, PREFS, NOW).groups[0];
+  assert.deepEqual([g.status, g.failed, g.age, g.rows.length], ["offline", true, null, 0]);
+});
+
+test("cardModel: a provider still loading says so", () => {
+  const g = cardModel({}, PREFS, NOW).groups[0];
+  assert.deepEqual([g.status, g.failed, g.rows.length], ["loading…", false, 0]);
+});
+
+test("cardModel: a reading older than 15 min is dimmed", () => {
+  const s = STATES();
+  s.codex.report = { ...s.codex.report, observedAt: NOW - 901 };
+  const g = cardModel(s, PREFS, NOW).groups[1];
+  assert.equal(g.dim, true);
+  assert.equal(g.status, "updated 15 min ago");
+});
+
+test("cardModel: everything hidden means no card", () => {
+  assert.equal(cardModel(STATES(), { ...PREFS, hidden: ["claude", "codex"] }, NOW).empty, true);
+});
+
+// ---- which side of the panel shows ----
+
+test("panelOnEnter: settings stay while the pointer only crosses the gap", () => {
+  assert.equal(panelOnEnter("settings", 1000, 1200, 300), "settings");
+});
+
+test("panelOnEnter: back to limits once the panel has closed", () => {
+  assert.equal(panelOnEnter("settings", 1000, 1301, 300), "limits");
+});
+
+test("panelOnEnter: settings stay if the pointer never left", () => {
+  assert.equal(panelOnEnter("settings", null, 5000, 300), "settings");
+});
+
+test("panelOnEnter: limits stay limits", () => {
+  assert.equal(panelOnEnter("limits", 1000, 9000, 300), "limits");
 });

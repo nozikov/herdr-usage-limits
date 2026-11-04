@@ -26,35 +26,61 @@ export function segmentView(w, now, showResetTime = false) {
   };
 }
 
-function windowLine(w, now) {
-  if (w.resetsAt != null && w.resetsAt <= now) return `${w.long} — reset, waiting for a new reading`;
-  const parts = [`${w.long} — ${w.percent}%`];
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+function cardRow(w, now) {
+  if (w.resetsAt != null && w.resetsAt <= now) {
+    return { id: w.id, long: w.long, percent: "—", level: "ok", fill: 0, tick: null, detail: "reset, waiting for a new reading" };
+  }
+  const parts = [];
   if (w.resetsAt != null) {
-    // Round like resetClock does, so "in 2d 6h" and "Fri 14:00" agree for a 13:59:59.6 reset.
+    // Round like resetClock does, so "2d 6h" and "Fri 14:00" agree for a 13:59:59.6 reset.
     const left = Math.round((w.resetsAt - now) / 60) * 60;
-    parts.push(`resets in ${timeLeft(left)} (${resetClock(w.resetsAt, now)})`);
+    parts.push(timeLeft(left), resetClock(w.resetsAt, now));
   }
   const p = pace(w, now);
   if (p) parts.push(p.verdict);
-  return parts.join(" · ");
+  return {
+    id: w.id,
+    long: w.long,
+    percent: `${w.percent}%`,
+    level: level(w.percent),
+    fill: Math.min(1, Math.max(0, w.percent / 100)),
+    tick: p?.elapsed ?? null,
+    detail: parts.join(" · "),
+  };
 }
 
-const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+// The hover card: everything known, so hiddenWindows don't apply. Hidden providers
+// aren't fetched, so they have nothing to show.
+export function cardModel(states, prefs, now, providers = PROVIDERS) {
+  const groups = [];
+  for (const p of providers) {
+    if (!isShown(prefs, p.id)) continue;
+    const { report = null, lastGood = null, installed = null } = states[p.id] ?? {};
+    if (installed === false) continue;
+    const g = { providerId: p.id, name: p.name, icon: p.icon, plan: null, status: "loading…", failed: false, dim: false, age: null, rows: [] };
+    if (report?.status === "ok") {
+      g.plan = report.plan ? cap(report.plan) : null;
+      g.status = `updated ${ago(report.observedAt, now)}`;
+      g.dim = now - report.observedAt > STALE_AFTER;
+      g.rows = report.windows.map((w) => cardRow(w, now));
+    } else if (report) {
+      g.status = report.message ?? report.status;
+      g.failed = true;
+      g.dim = true;
+      g.age = lastGood ? `Last reading ${ago(lastGood.observedAt, now)}` : null;
+      g.rows = (lastGood?.windows ?? []).map((w) => cardRow(w, now));
+    }
+    groups.push(g);
+  }
+  return { groups, empty: groups.length === 0 };
+}
 
-// state: { report, lastGood, installed } (see barModel).
-export function tooltipText(provider, state, now) {
-  const { report, lastGood, installed } = state;
-  if (installed === false) return `${provider.name} · not installed`;
-  if (!report) return `${provider.name} · loading…`;
-  if (report.status === "ok") {
-    const head = [provider.name, report.plan ? cap(report.plan) : null, `updated ${ago(report.observedAt, now)}`].filter(Boolean).join(" · ");
-    return [head, ...report.windows.map((w) => windowLine(w, now))].join("\n");
-  }
-  const lines = [`${provider.name} · ${report.message ?? report.status}`];
-  if (lastGood) {
-    lines.push(`Last reading ${ago(lastGood.observedAt, now)}:`, ...lastGood.windows.map((w) => windowLine(w, now)));
-  }
-  return lines.join("\n");
+// The panel opens on limits: settings last only until it closes. It closes closeDelay
+// after the pointer leaves, and nothing reports that, so it's worked out on the way back.
+export function panelOnEnter(panel, leftAt, nowMs, closeDelay) {
+  return leftAt != null && nowMs - leftAt > closeDelay ? "limits" : panel;
 }
 
 // ProviderState: { report: Report|null, lastGood: Report|null, installed: true|false|null }
