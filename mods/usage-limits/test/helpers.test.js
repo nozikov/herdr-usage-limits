@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MOD, HERE } from "./_util.js";
@@ -45,6 +45,16 @@ test("claude helper: CLI that never answers → exit 1 within 20 s and no leftov
 
 test("codex helper: bogus bin and no sessions dir → exit 127", () => {
   const r = run("codex-limits.sh", { HERDR_USAGE_CODEX_BIN: "/nonexistent/codex", CODEX_HOME: mkdtempSync(join(tmpdir(), "codex-home-")) });
+  assert.equal(r.status, 127);
+  assert.equal(r.stdout, "");
+});
+
+test("codex helper: codex missing but session logs exist → exit 127 (not a stale 'ok')", () => {
+  const home = mkdtempSync(join(tmpdir(), "codex-home-"));
+  mkdirSync(join(home, "sessions", "2026", "11", "04"), { recursive: true });
+  const snap = JSON.parse(readFileSync(join(HERE, "fixtures", "codex-session-snapshot.json"), "utf8")).snapshot;
+  writeFileSync(join(home, "sessions", "2026", "11", "04", "rollout.jsonl"), JSON.stringify(snap) + "\n");
+  const r = run("codex-limits.sh", { HERDR_USAGE_CODEX_BIN: "/nonexistent/codex", CODEX_HOME: home });
   assert.equal(r.status, 127);
   assert.equal(r.stdout, "");
 });

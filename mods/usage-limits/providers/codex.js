@@ -36,12 +36,16 @@ function fromRpc(result, now) {
   return windows.length ? okReport("codex app-server", now, windows, plan) : errorReport("codex app-server", "No limits in Codex reply", now);
 }
 
+// A logged snapshot is never a live reading: the provider is failing, and the
+// snapshot is only a dated candidate for "last good" (see lib/state.js).
 function fromSnapshot(snap, now) {
+  const failed = errorReport("codex app-server", "Codex app-server didn't answer", now);
+  const at = toEpoch(snap.timestamp);
   const r = snap.payload?.rate_limits ?? {};
   const camel = (w) => w && { usedPercent: w.used_percent, windowDurationMins: w.window_minutes, resetsAt: w.resets_at };
   const windows = slotWindows(r.limit_id ?? "codex", r.limit_name, [["primary", camel(r.primary)], ["secondary", camel(r.secondary)]]);
-  if (!windows.length) return errorReport("Codex session log", "No limits in Codex log", now);
-  return okReport("Codex session log", now, windows, r.plan_type ?? null, toEpoch(snap.timestamp) ?? now);
+  if (at == null || !windows.length) return failed;
+  return { ...failed, fallback: okReport("Codex session log", now, windows, r.plan_type ?? null, at) };
 }
 
 export function parse(text, now) {

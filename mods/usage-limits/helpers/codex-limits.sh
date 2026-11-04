@@ -6,14 +6,14 @@
 # tokens. If that fails, prints the newest rate-limit snapshot Codex logged in
 # its sessions (last 14 days) as {"snapshot": <line>}.
 #
-# Exit: 0 = printed something, 127 = codex CLI not found and no logged snapshot,
+# Exit: 0 = printed something, 127 = codex CLI not found,
 # 1 = codex found but no reply and no snapshot.
 # Override the binary with HERDR_USAGE_CODEX_BIN; sessions follow CODEX_HOME.
 
-CODEX=$(command -v "${HERDR_USAGE_CODEX_BIN:-codex}" 2>/dev/null)
-found=$?
+# Not installed: say so, even if old session logs exist (they'd look like a reading).
+CODEX=$(command -v "${HERDR_USAGE_CODEX_BIN:-codex}" 2>/dev/null) || exit 127
 
-if [ "$found" -eq 0 ]; then
+{
   dir=$(mktemp -d "${TMPDIR:-/tmp}/herdr-codex-limits.XXXXXX") || exit 1
   out="$dir/out"
   if mkfifo "$dir/in"; then
@@ -41,8 +41,10 @@ if [ "$found" -eq 0 ]; then
     fi
   fi
   rm -rf "$dir"
-fi
+}
 
+# app-server didn't answer: offer the newest logged snapshot (the mod shows it
+# as the last reading, dated, with the provider marked as failing).
 sessions="${CODEX_HOME:-$HOME/.codex}/sessions"
 if [ -d "$sessions" ]; then
   for f in $(find "$sessions" -name '*.jsonl' -mtime -14 2>/dev/null | xargs ls -t 2>/dev/null | head -30); do
@@ -54,5 +56,4 @@ if [ -d "$sessions" ]; then
   done
 fi
 
-if [ "$found" -eq 0 ]; then exit 1; fi
-exit 127
+exit 1

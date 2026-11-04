@@ -25,7 +25,11 @@ export function segmentView(w, now) {
 function windowLine(w, now) {
   if (w.resetsAt != null && w.resetsAt <= now) return `${w.long} — reset, waiting for a new reading`;
   const parts = [`${w.long} — ${w.percent}%`];
-  if (w.resetsAt != null) parts.push(`resets ${resetClock(w.resetsAt, now)}`);
+  if (w.resetsAt != null) {
+    // Round like resetClock does, so "in 2d 6h" and "Fri 14:00" agree for a 13:59:59.6 reset.
+    const left = Math.round((w.resetsAt - now) / 60) * 60;
+    parts.push(`resets in ${timeLeft(left)} (${resetClock(w.resetsAt, now)})`);
+  }
   const p = pace(w, now);
   if (p) parts.push(p.verdict);
   return parts.join(" · ");

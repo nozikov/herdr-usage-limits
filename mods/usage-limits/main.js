@@ -9,6 +9,7 @@ import { exec, theme, run, props, shared, setShared, appHome, openOverlay, close
 import { PROVIDERS } from "./providers/index.js";
 import { barModel, chooseDensity, tooltipText } from "./lib/view.js";
 import { effectivePrefs, isShown, toggleProvider, toggleWindow } from "./lib/prefs.js";
+import { nextState } from "./lib/state.js";
 
 const MOD = "usage-limits";
 const KEY_STATE = "usage-limits.state";
@@ -63,12 +64,7 @@ export default class UsageLimits extends View {
       const prev = states()[p.id] ?? { report: null, lastGood: null, installed: null };
       try {
         const r = await exec("sh", [`${appHome()}/mods/${MOD}/${p.helper}`]);
-        if (r.code === 127) {
-          next = { report: null, lastGood: prev.lastGood, installed: false };
-        } else {
-          const report = p.parse(r.stdout, now());
-          next = { report, lastGood: report.status === "ok" ? report : prev.lastGood, installed: true };
-        }
+        next = r.code === 127 ? nextState(prev, null, false) : nextState(prev, p.parse(r.stdout, now()), true);
       } catch (e) {
         next = { ...prev, report: { status: "error", message: String(e?.message ?? e), plan: null, observedAt: now(), source: p.helper, windows: [] } };
       }

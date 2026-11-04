@@ -42,9 +42,9 @@ test("tooltip lists every window with long labels", () => {
   const text = tooltipText(claude, { report, lastGood: report, installed: true }, NOW);
   const lines = text.split("\n");
   assert.equal(lines[0], "Claude · Max · updated just now");
-  assert.match(lines[1], /^5-hour — 6% · resets 09:00/);
-  assert.match(lines[2], /^Weekly — 50% · resets Fri 14:00 · /);
-  assert.match(lines[3], /^Weekly · Fable — 3% · resets Fri 14:00/);
+  assert.match(lines[1], /^5-hour — 6% · resets in 1h 0m \(09:00\)/);
+  assert.match(lines[2], /^Weekly — 50% · resets in 2d 6h \(Fri 14:00\) · /);
+  assert.match(lines[3], /^Weekly · Fable — 3% · resets in 2d 6h \(Fri 14:00\)/);
   assert.equal(lines.length, 4);
 });
 

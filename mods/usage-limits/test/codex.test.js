@@ -33,15 +33,26 @@ test("multi limit ids → codex first, then 'Spark 5h'", () => {
   assert.equal(r.windows[2].percent, 40);
 });
 
-test("session snapshot fallback → observedAt from snapshot timestamp", () => {
+test("session snapshot fallback → error with the snapshot as a dated fallback", () => {
   const text = read("codex-session-snapshot.json");
   const snap = JSON.parse(text).snapshot;
   const r = codex.parse(text, NOW);
-  assert.equal(r.status, "ok");
-  assert.equal(r.source, "Codex session log");
-  assert.equal(r.observedAt, Math.floor(Date.parse(snap.timestamp) / 1000));
-  assert.deepEqual(r.windows.map((w) => w.id), ["codex:primary", "codex:secondary"]);
-  assert.equal(r.windows[0].percent, Math.round(snap.payload.rate_limits.primary.used_percent));
+  assert.equal(r.status, "error");
+  assert.equal(r.message, "Codex app-server didn't answer");
+  assert.deepEqual(r.windows, []);
+  assert.equal(r.fallback.status, "ok");
+  assert.equal(r.fallback.source, "Codex session log");
+  assert.equal(r.fallback.observedAt, Math.floor(Date.parse(snap.timestamp) / 1000));
+  assert.deepEqual(r.fallback.windows.map((w) => w.id), ["codex:primary", "codex:secondary"]);
+  assert.equal(r.fallback.windows[0].percent, Math.round(snap.payload.rate_limits.primary.used_percent));
+});
+
+test("snapshot without a timestamp → no fallback (never stamped as fresh)", () => {
+  const snap = JSON.parse(read("codex-session-snapshot.json")).snapshot;
+  delete snap.timestamp;
+  const r = codex.parse(JSON.stringify({ snapshot: snap }), NOW);
+  assert.equal(r.status, "error");
+  assert.equal(r.fallback, undefined);
 });
 
 test("garbage → status error", () => {
