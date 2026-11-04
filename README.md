@@ -1,12 +1,11 @@
-# herdr-mods
+# herdr-usage-limits
 
-Mods for the [Herdr](https://herdr.dev) desktop app. One folder per mod under
-`mods/`, each with a `RECIPE.md` (the brief to build it from scratch) and a
-`preview.png`.
+A mod for the [Herdr](https://herdr.dev) desktop app: Claude Code and Codex
+limit windows (5-hour, weekly, per-model) in the status bar, with pace and a
+checkbox popup. Reads no tokens.
 
-| Mod | What it does |
-|---|---|
-| [usage-limits](mods/usage-limits/RECIPE.md) | Claude Code and Codex limit windows (5-hour, weekly, per-model) in the status bar, with pace and a checkbox popup. Reads no tokens. |
+The mod lives in [`mods/usage-limits/`](mods/usage-limits/RECIPE.md), with a
+`RECIPE.md` (the brief to build it from scratch) and a `preview.png`.
 
 ## Develop
 
