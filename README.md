@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/hero-dark.png">
-    <img src="assets/hero-light.png" width="100%" alt="The Herdr window with Claude Code and Codex limits in its status bar, magnified below it: 5-hour at 92%, weekly at 74%, Fable at 47%">
-  </picture>
+  <img src="assets/hero.png" width="100%" alt="The Herdr window with Claude Code and Codex limits in its status bar, magnified below it: 5-hour at 92%, weekly at 74%, Fable at 47%">
 </p>
 
 <h1 align="center">Usage limits for Herdr</h1>
@@ -29,10 +26,7 @@ to add, no token to read and no model usage to pay for.
 ## Read it at a glance
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/states-dark.gif">
-    <img src="assets/states-light.gif" width="100%" alt="The status bar moving from green, through amber, to red as the limits fill up">
-  </picture>
+  <img src="assets/states.gif" width="100%" alt="The status bar moving from green, through amber, to red as the limits fill up">
 </p>
 
 - **The bar** is how much of the window you've used.
@@ -54,7 +48,7 @@ pace (`ahead`, `on pace`, `under`).
 ## Show only what you watch
 
 <p align="center">
-  <img src="assets/popup.png" width="78%" alt="The settings popup in dark and light themes: a checkbox per provider and per limit window, and a Refresh now button">
+  <img src="assets/popup.png" width="400" alt="The settings popup: a checkbox per provider and per limit window, and a Refresh now button">
 </p>
 
 Click the limits to choose providers and windows. A new window or a CLI you install
