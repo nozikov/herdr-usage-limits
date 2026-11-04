@@ -16,6 +16,12 @@ export function timeLeft(sec) {
   return `${m}m`;
 }
 
+export function tokens(n) {
+  if (n < 1000) return String(n);
+  if (n < 999500) return `${Math.round(n / 1000)}k`;
+  return `${(n / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
+}
+
 const pad = (n) => String(n).padStart(2, "0");
 
 // Local clock: "17:00" today, "Fri 17:00" on another day.

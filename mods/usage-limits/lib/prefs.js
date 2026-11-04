@@ -1,11 +1,14 @@
-// What the person chose to see. Opt-out lists, so anything new shows by itself.
-// Prefs: { hidden: [providerId], hiddenWindows: ["<providerId>:<windowId>"], showResetTime: bool }
+// What the person chose to see on the bar; the hover panel always shows everything.
+// Limits are opt-out lists, so anything new shows by itself. Session numbers are opt-in.
+// Prefs: { hidden: [providerId], hiddenWindows: ["<providerId>:<windowId>"], showResetTime: bool,
+//          sessionOnBar: ["context"|"calls"|"compactions"] }
 // showResetTime: every window shows its time to reset, not only amber and red ones.
 
 const normalize = (p) => ({
   hidden: [...(p?.hidden ?? [])],
   hiddenWindows: [...(p?.hiddenWindows ?? [])],
   showResetTime: p?.showResetTime === true,
+  sessionOnBar: [...(p?.sessionOnBar ?? [])],
 });
 
 // Saved choices win once they exist; until then the layout's props preset them.
@@ -30,4 +33,10 @@ export function toggleWindow(prefs, providerId, windowId) {
 
 export function toggleShowResetTime(prefs) {
   return { ...normalize(prefs), showResetTime: !prefs.showResetTime };
+}
+
+export const isOnBar = (prefs, row) => prefs.sessionOnBar.includes(row);
+
+export function toggleOnBar(prefs, row) {
+  return { ...normalize(prefs), sessionOnBar: flip(prefs.sessionOnBar, row) };
 }

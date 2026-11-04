@@ -1,13 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { effectivePrefs, isShown, toggleProvider, toggleShowResetTime, toggleWindow } from "../lib/prefs.js";
+import { effectivePrefs, isOnBar, isShown, toggleOnBar, toggleProvider, toggleShowResetTime, toggleWindow } from "../lib/prefs.js";
 
 test("layout presets apply until saved prefs exist", () => {
   const props = { hidden: ["codex"], hiddenWindows: ["claude:session"] };
-  assert.deepEqual(effectivePrefs(null, props), { hidden: ["codex"], hiddenWindows: ["claude:session"], showResetTime: false });
-  assert.deepEqual(effectivePrefs({ hidden: [], hiddenWindows: [] }, props), { hidden: [], hiddenWindows: [], showResetTime: false });
-  assert.deepEqual(effectivePrefs(null, {}), { hidden: [], hiddenWindows: [], showResetTime: false });
-  assert.deepEqual(effectivePrefs(undefined, undefined), { hidden: [], hiddenWindows: [], showResetTime: false });
+  assert.deepEqual(effectivePrefs(null, props), { hidden: ["codex"], hiddenWindows: ["claude:session"], showResetTime: false, sessionOnBar: [] });
+  assert.deepEqual(effectivePrefs({ hidden: [], hiddenWindows: [] }, props), { hidden: [], hiddenWindows: [], showResetTime: false, sessionOnBar: [] });
+  assert.deepEqual(effectivePrefs(null, {}), { hidden: [], hiddenWindows: [], showResetTime: false, sessionOnBar: [] });
+  assert.deepEqual(effectivePrefs(undefined, undefined), { hidden: [], hiddenWindows: [], showResetTime: false, sessionOnBar: [] });
 });
 
 test("anything not listed is shown, including new windows", () => {
@@ -49,4 +49,23 @@ test("hiding a provider or window keeps the reset time choice", () => {
   const p = { hidden: [], hiddenWindows: [], showResetTime: true };
   assert.equal(toggleProvider(p, "codex").showResetTime, true);
   assert.equal(toggleWindow(p, "claude", "session").showResetTime, true);
+});
+
+test("session numbers stay off the bar until ticked, and a layout can preset them", () => {
+  assert.equal(isOnBar(effectivePrefs(null, {}), "context"), false);
+  assert.equal(isOnBar(effectivePrefs(null, { sessionOnBar: ["calls"] }), "calls"), true);
+});
+
+test("toggleOnBar round-trips and doesn't mutate", () => {
+  const p0 = effectivePrefs(null, {});
+  const p1 = toggleOnBar(p0, "calls");
+  assert.equal(isOnBar(p1, "calls"), true);
+  assert.equal(isOnBar(p0, "calls"), false);
+  assert.equal(isOnBar(toggleOnBar(p1, "calls"), "calls"), false);
+});
+
+test("every toggle keeps the other choices", () => {
+  const p = { hidden: ["codex"], hiddenWindows: ["a:b"], showResetTime: true, sessionOnBar: ["calls"] };
+  for (const q of [toggleProvider(p, "x"), toggleWindow(p, "x", "y"), toggleShowResetTime(p)]) assert.deepEqual(q.sessionOnBar, ["calls"]);
+  assert.equal(toggleOnBar(p, "context").showResetTime, true);
 });

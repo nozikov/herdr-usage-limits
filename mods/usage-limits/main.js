@@ -5,10 +5,11 @@
 // this mod never reads a token. Everything below main.js is pure and tested.
 import { View, div, image, svg } from "gpui-kit";
 import { HoverCard, h_flex, v_flex } from "gpui-base";
-import { exec, theme, props, shared, setShared, appHome } from "herdr";
+import { exec, focused, theme, props, shared, setShared, appHome } from "herdr";
 import { PROVIDERS } from "./providers/index.js";
 import { barModel, cardModel, chooseDensity, panelOnEnter } from "./lib/view.js";
-import { effectivePrefs, isShown, toggleProvider, toggleShowResetTime, toggleWindow } from "./lib/prefs.js";
+import { effectivePrefs, isOnBar, isShown, toggleOnBar, toggleProvider, toggleShowResetTime, toggleWindow } from "./lib/prefs.js";
+import { parseSession, sessionOnBar, sessionView } from "./lib/session.js";
 import { nextState } from "./lib/state.js";
 
 const MOD = "usage-limits";
@@ -18,6 +19,8 @@ const KEY_REFRESH = "usage-limits.refresh";
 const FETCH_EVERY = 5 * 60;       // s, installed providers
 const MISSING_EVERY = 60 * 60;    // s, not-installed providers
 const REFRESH_COOLDOWN = 30;      // s
+const SESSION_EVERY = 10 * 1000;   // ms, at most this often on hover
+const AGENTS = { "claude-code": "claude", codex: "codex" }; // Herdr's app name → session.sh
 const BAR_W = 30;
 const PANEL_W = 340;
 const PANEL_BAR_W = 130;
@@ -46,6 +49,10 @@ export default class UsageLimits extends View {
     this.width = 0;
     this.panel = "limits"; // or "settings"
     this.leftAt = null;    // ms, when the pointer left the bar and the panel
+    this.terminal = null;  // the focused terminal the session below belongs to
+    this.session = null;   // { data: Session, title } or null
+    this.sessionAt = 0;    // ms, last session read
+    this.sessionBusy = false;
     this.lastFetch = {};   // providerId → epoch s of last attempt
     this.busy = {};        // providerId → fetch in flight
     this.seenRefresh = shared(KEY_REFRESH) ?? 0;
@@ -55,13 +62,12 @@ export default class UsageLimits extends View {
 
   // Fetch whatever is due, then redraw (countdowns and pace move every minute).
   tick(cx, force) {
-    const prefs = this.prefs();
     const st = states();
     for (const p of PROVIDERS) {
-      if (!isShown(prefs, p.id)) continue;
       const every = st[p.id]?.installed === false ? MISSING_EVERY : FETCH_EVERY;
       if (force || now() - (this.lastFetch[p.id] ?? 0) >= every) this.fetch(p, cx);
     }
+    this.readSession(cx);
     cx.notify();
   }
 
@@ -80,6 +86,42 @@ export default class UsageLimits extends View {
       }
       this.busy[p.id] = false;
       setShared(KEY_STATE, { ...states(), [p.id]: next });
+      cx.notify();
+    });
+  }
+
+  // Terminal → its agent's process → that process's session. Any step failing means
+  // no block at all: another session's numbers would be worse than none.
+  readSession(cx) {
+    if (this.sessionBusy) return; // a hung hc mustn't pile up; it re-reads below if focus moved
+    const terminal = this.terminal;
+    this.sessionAt = Date.now();
+    if (!terminal) {
+      this.session = null;
+      return;
+    }
+    this.sessionBusy = true;
+    cx.spawn(async (cx) => {
+      let next = null;
+      try {
+        const info = JSON.parse((await exec("hc", ["get", terminal])).stdout);
+        const app = AGENTS[info.status?.app];
+        const pid = info.foreground?.pid;
+        if (app && pid) {
+          const r = await exec("sh", [`${appHome()}/mods/${MOD}/helpers/session.sh`, app, String(pid)]);
+          const data = r.code === 0 ? parseSession(r.stdout, app) : null;
+          if (data) next = { data, title: (info.cwd ?? "").split("/").pop() };
+        }
+      } catch {
+        next = null;
+      } finally {
+        this.sessionBusy = false;
+      }
+      if (terminal !== this.terminal) {
+        this.readSession(cx); // focus moved on while this was reading
+        return;
+      }
+      this.session = next;
       cx.notify();
     });
   }
@@ -105,6 +147,7 @@ export default class UsageLimits extends View {
     }
     this.panel = panelOnEnter(this.panel, this.leftAt, Date.now(), PANEL_CLOSE_DELAY);
     this.leftAt = null;
+    if (Date.now() - this.sessionAt >= SESSION_EVERY) this.readSession(cx);
     cx.notify();
   }
 
@@ -127,12 +170,19 @@ export default class UsageLimits extends View {
     const t = theme();
     const st = states();
     const model = barModel(st, this.prefs(), now());
-    const density = this.width ? chooseDensity(model, this.width - 24) : 0;
+    const numbers = sessionOnBar(this.session?.data, this.prefs());
+    const numbersWidth = numbers.reduce((w, n) => w + 7 * n.text.length + 14, numbers.length ? 14 : 0);
+    const density = this.width ? chooseDensity(model, this.width - 24 - numbersWidth) : 0;
     const root = h_flex().id("root").size_full().px(12).items_center().justify_end().overflow_hidden()
       .bg(t.chrome).border_t(1).border_color(t.border).text_size(11.8).text_color(t.muted)
       .on_size_change((size, cx) => { this.width = size.width; cx.notify(); });
     // Only the limits themselves open the panel, not the empty rest of the block.
     const content = h_flex().id("ul-content").gap(14).items_center().flex_none().on_hover((on, cx) => this.hover(on, cx));
+    if (numbers.length) {
+      content.child(h_flex().gap(10).items_center().flex_none()
+        .children(numbers.map((n) => div().whitespace_nowrap().text_color(textColor(n.level, n.text, t)).child(n.text))));
+      if (!model.empty) content.child(div().w(1).h(14).bg(t.border).flex_none());
+    }
     if (model.empty) content.child(div().id("ul-empty").child(svg(`mods/${MOD}/icons/gauge.svg`).size(14)));
     model.groups.forEach((g, i) => {
       if (i > 0) content.child(div().w(1).h(14).bg(t.border).flex_none());
@@ -143,8 +193,8 @@ export default class UsageLimits extends View {
           .when(g.mark != null, (e) => e.child(div().text_color(t.dim).child(g.mark)))
           .children(g.segments.map((s) => this.segment(s, density, t))));
     });
-    const panel = cardModel(st, this.prefs(), now());
-    // With everything hidden there are no limits to show, and settings are the way back.
+    const panel = cardModel(st, now());
+    // With no CLI installed there are no limits to show, so settings are all there is.
     const body = this.panel === "settings" || panel.empty ? this.settings(!panel.empty, t) : this.limits(panel, t);
     return root.child(HoverCard.new("ul-panel").anchor("bottom_right").open_delay(PANEL_OPEN_DELAY).close_delay(PANEL_CLOSE_DELAY)
       .trigger(content)
@@ -174,6 +224,21 @@ export default class UsageLimits extends View {
       .child(v_flex().gap(8).opacity(g.dim ? 0.55 : 1).children(g.rows.map((r) => this.cardRow(r, t))));
   }
 
+  sessionBlock(v, t) {
+    const stats = [v.calls, v.compactions].filter(Boolean).join(" · ");
+    return v_flex().gap(6)
+      .child(h_flex().gap(6).items_center()
+        .child(div().flex_none().font_semibold().child("This session"))
+        .child(div().min_w(0).truncate().text_color(t.dim).child(v.title)))
+      .child(h_flex().gap(8).items_center()
+        .child(div().flex_1().min_w(0).truncate().text_color(t.muted).child("Context"))
+        .when(v.context.fill != null, (r) => r.child(usageBar(PANEL_BAR_W, v.context.fill, null, levelColor(v.context.level, t), t)))
+        .child(div().flex_none().whitespace_nowrap().text_color(textColor(v.context.level, v.context.text, t)).child(v.context.text)))
+      .when(v.context.detail != null, (e) => e.child(div().text_size(11).text_color(t.dim).child(v.context.detail)))
+      .child(div().text_color(t.muted).child(stats))
+      .when(v.last != null, (e) => e.child(div().text_size(11).text_color(t.dim).child(v.last)));
+  }
+
   iconButton(id, icon, label, enabled, onClick, t) {
     return div().id(id).size(24).rounded(5).flex().items_center().justify_center().tooltip(label)
       .when(enabled, (e) => e.cursor_pointer().hover((s) => s.bg(t.hover)).on_click((_e, cx) => onClick(cx)))
@@ -189,6 +254,8 @@ export default class UsageLimits extends View {
   limits(model, t) {
     const rule = () => div().h(1).bg(t.border).flex_none();
     const body = this.shell(t);
+    const session = sessionView(this.session?.data, this.session?.title);
+    if (session) body.child(this.sessionBlock(session, t)).child(rule());
     model.groups.forEach((g, i) => {
       if (i > 0) body.child(rule());
       body.child(this.cardGroup(g, t));
@@ -233,18 +300,33 @@ export default class UsageLimits extends View {
       .child(h_flex().gap(6).items_center().h(24)
         .when(canGoBack, (e) => e.child(this.iconButton("ul-back", "back", "Back to limits", true, (cx) => this.show("limits", cx), t)))
         .child(div().font_semibold().child("Settings")))
+      .child(div().text_size(11).text_color(t.dim).child("What the bar shows. This panel always shows everything."))
       .child(v_flex().gap(1).children(rows))
       .child(div().h(1).bg(t.border).flex_none())
       .child(this.check("opt-reset-time", prefs.showResetTime, [div().text_color(t.foreground).child("Always show time to reset")],
         () => save(toggleShowResetTime(this.prefs())), t))
-      .child(div().text_size(10.5).text_color(t.dim).child("Data: claude CLI · codex app-server. No tokens are read."));
+      .child(div().h(1).bg(t.border).flex_none())
+      .child(v_flex().gap(1)
+        .child(div().font_semibold().pb(3).child("This session"))
+        .children(["Context", "Calls", "Compactions"].map((name) => {
+          const row = name.toLowerCase();
+          return this.check(`s-${row}`, isOnBar(prefs, row), [div().text_color(t.foreground).child(name)],
+            () => save(toggleOnBar(this.prefs(), row)), t);
+        })))
+      .child(div().text_size(10.5).text_color(t.dim).child("Data: claude and codex CLIs, numbers from session logs."));
   }
 
   render(cx) {
+    const terminal = focused()?.terminal ?? null;
+    if (terminal !== this.terminal) {
+      this.terminal = terminal;
+      this.session = null;
+      this.readSession(cx);
+    }
     const asked = shared(KEY_REFRESH) ?? 0;
     if (asked !== this.seenRefresh) {
       this.seenRefresh = asked;
-      for (const p of PROVIDERS) if (isShown(this.prefs(), p.id)) this.fetch(p, cx);
+      for (const p of PROVIDERS) this.fetch(p, cx);
     }
     return this.renderBar(cx);
   }

@@ -142,14 +142,14 @@ test("chooseDensity: times of calm windows go last, so providers still fit", () 
 test("cardModel: a provider's plan, age and one row per window", () => {
   const s = STATES();
   s.claude.report = { ...s.claude.report, observedAt: NOW - 60 };
-  const g = cardModel(s, PREFS, NOW).groups[0];
+  const g = cardModel(s, NOW).groups[0];
   assert.deepEqual([g.providerId, g.name, g.plan, g.status, g.failed, g.dim], ["claude", "Claude", "Max", "updated just now", false, false]);
   assert.deepEqual(g.rows.map((r) => r.long), ["5-hour", "Weekly", "Weekly · Fable"]);
 });
 
 test("cardModel: a row carries percent, level, bar and detail", () => {
   const report = { status: "ok", plan: "max", observedAt: NOW, source: "x", windows: [W({ percent: 74, resetsAt: NOW + 58 * 3600 })] };
-  const r = cardModel({ claude: { report, lastGood: report, installed: true } }, PREFS, NOW, [claude]).groups[0].rows[0];
+  const r = cardModel({ claude: { report, lastGood: report, installed: true } }, NOW, [claude]).groups[0].rows[0];
   assert.deepEqual([r.percent, r.level, r.fill], ["74%", "warn", 0.74]);
   assert.ok(Math.abs(r.tick - 0.6548) < 0.001);
   assert.equal(r.detail, "2d 10h · Fri 18:00 · on pace");
@@ -157,59 +157,54 @@ test("cardModel: a row carries percent, level, bar and detail", () => {
 
 test("cardModel: a row with no known reset has no detail", () => {
   const report = { status: "ok", plan: null, observedAt: NOW, source: "x", windows: [W({ resetsAt: null, durationSec: null })] };
-  const g = cardModel({ claude: { report, lastGood: report, installed: true } }, PREFS, NOW, [claude]).groups[0];
+  const g = cardModel({ claude: { report, lastGood: report, installed: true } }, NOW, [claude]).groups[0];
   assert.equal(g.plan, null);
   assert.equal(g.rows[0].detail, "");
 });
 
 test("cardModel: a passed reset shows '—', never a number", () => {
   const report = { status: "ok", plan: null, observedAt: NOW, source: "x", windows: [W({ percent: 95, resetsAt: NOW - 1 })] };
-  const r = cardModel({ claude: { report, lastGood: report, installed: true } }, PREFS, NOW, [claude]).groups[0].rows[0];
+  const r = cardModel({ claude: { report, lastGood: report, installed: true } }, NOW, [claude]).groups[0].rows[0];
   assert.deepEqual([r.percent, r.level, r.fill, r.tick, r.detail], ["—", "ok", 0, null, "reset, waiting for a new reading"]);
 });
 
-test("cardModel: windows hidden from the bar still show", () => {
-  const g = cardModel(STATES(), { ...PREFS, hiddenWindows: ["claude:session"] }, NOW).groups[0];
-  assert.equal(g.rows.length, 3);
-});
-
-test("cardModel: hidden and not installed providers are left out", () => {
+test("cardModel: not installed providers are left out", () => {
   const s = STATES();
   s.codex = { report: null, lastGood: null, installed: false };
-  assert.deepEqual(cardModel(s, PREFS, NOW).groups.map((g) => g.providerId), ["claude"]);
-  assert.deepEqual(cardModel(STATES(), { ...PREFS, hidden: ["claude"] }, NOW).groups.map((g) => g.providerId), ["codex"]);
+  assert.deepEqual(cardModel(s, NOW).groups.map((g) => g.providerId), ["claude"]);
+});
+
+test("cardModel: nothing installed means no limits to show", () => {
+  const gone = { report: null, lastGood: null, installed: false };
+  assert.equal(cardModel({ claude: gone, codex: gone }, NOW).empty, true);
 });
 
 test("cardModel: a failing provider says why and keeps its last reading, dimmed, with its age", () => {
   const s = STATES();
   s.claude.lastGood = { ...s.claude.lastGood, observedAt: NOW - 1200 };
   s.claude.report = { status: "error", message: "Not logged in", plan: null, observedAt: NOW, source: "claude CLI", windows: [] };
-  const g = cardModel(s, PREFS, NOW).groups[0];
+  const g = cardModel(s, NOW).groups[0];
   assert.deepEqual([g.status, g.failed, g.dim, g.age, g.rows.length], ["Not logged in", true, true, "Last reading 20 min ago", 3]);
 });
 
 test("cardModel: a failing provider with no last reading has no rows", () => {
   const s = STATES();
   s.claude = { report: { status: "error", message: "offline", plan: null, observedAt: NOW, source: "x", windows: [] }, lastGood: null, installed: true };
-  const g = cardModel(s, PREFS, NOW).groups[0];
+  const g = cardModel(s, NOW).groups[0];
   assert.deepEqual([g.status, g.failed, g.age, g.rows.length], ["offline", true, null, 0]);
 });
 
 test("cardModel: a provider still loading says so", () => {
-  const g = cardModel({}, PREFS, NOW).groups[0];
+  const g = cardModel({}, NOW).groups[0];
   assert.deepEqual([g.status, g.failed, g.rows.length], ["loading…", false, 0]);
 });
 
 test("cardModel: a reading older than 15 min is dimmed", () => {
   const s = STATES();
   s.codex.report = { ...s.codex.report, observedAt: NOW - 901 };
-  const g = cardModel(s, PREFS, NOW).groups[1];
+  const g = cardModel(s, NOW).groups[1];
   assert.equal(g.dim, true);
   assert.equal(g.status, "updated 15 min ago");
-});
-
-test("cardModel: everything hidden means no card", () => {
-  assert.equal(cardModel(STATES(), { ...PREFS, hidden: ["claude", "codex"] }, NOW).empty, true);
 });
 
 // ---- which side of the panel shows ----

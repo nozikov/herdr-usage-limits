@@ -51,12 +51,10 @@ function cardRow(w, now) {
   };
 }
 
-// The hover card: everything known, so hiddenWindows don't apply. Hidden providers
-// aren't fetched, so they have nothing to show.
-export function cardModel(states, prefs, now, providers = PROVIDERS) {
+// The hover panel: everything known. What's hidden is hidden from the bar only.
+export function cardModel(states, now, providers = PROVIDERS) {
   const groups = [];
   for (const p of providers) {
-    if (!isShown(prefs, p.id)) continue;
     const { report = null, lastGood = null, installed = null } = states[p.id] ?? {};
     if (installed === false) continue;
     const g = { providerId: p.id, name: p.name, icon: p.icon, plan: null, status: "loading…", failed: false, dim: false, age: null, rows: [] };

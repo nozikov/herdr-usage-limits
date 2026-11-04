@@ -2,6 +2,7 @@ process.env.TZ = "UTC";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { timeLeft, resetClock, level, pace, ago } from "../lib/format.js";
+import { tokens } from "../lib/format.js";
 
 const NOW = Date.UTC(2026, 10, 4, 8, 0, 0) / 1000; // Wed 2026-11-04 08:00 UTC
 
@@ -46,4 +47,13 @@ test("ago", () => {
   assert.equal(ago(NOW - 5 * 60, NOW), "5 min ago");
   assert.equal(ago(NOW - 3 * 3600, NOW), "3 h ago");
   assert.equal(ago(NOW - 2 * 86400, NOW), "2 d ago");
+});
+
+test("tokens: rounded for reading", () => {
+  assert.equal(tokens(0), "0");
+  assert.equal(tokens(999), "999");
+  assert.equal(tokens(1500), "2k");
+  assert.equal(tokens(190432), "190k");
+  assert.equal(tokens(1000000), "1M");
+  assert.equal(tokens(1250000), "1.3M");
 });
