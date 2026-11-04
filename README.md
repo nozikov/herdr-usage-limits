@@ -35,13 +35,18 @@ to add, no token to read and no model usage to pay for.
   </picture>
 </p>
 
-| You see | It means |
-|---|---|
-| **The bar** | How much of the window you've used |
-| **The tick** | How much of the window's time has passed. A bar past its tick means you're burning faster than the window allows |
-| **Green** | Under 70% |
-| **Amber** | 70–89%, and the time to reset appears: `74% · 2d 10h` |
-| **Red** | 90% and up: `92% · 38m` |
+- **The bar** is how much of the window you've used.
+- **The tick** is how much of the window's time has passed. A bar past its tick means you're burning faster than the window allows.
+
+<div align="center">
+
+| 🟢 Under 70% | 🟡 70–89% | 🔴 90% and up |
+|:---:|:---:|:---:|
+| `41%` | `74% · 2d 10h` | `92% · 38m` |
+
+</div>
+
+Amber and red add the time to reset, so you know how long you'd have to wait.
 
 Hover a provider for its plan, when it last updated, and each window's reset time and
 pace (`ahead`, `on pace`, `under`).
