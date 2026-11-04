@@ -61,3 +61,70 @@ test("tooltip for a missing or loading provider", () => {
   assert.equal(tooltipText(claude, { report: null, lastGood: null, installed: false }, NOW), "Claude · not installed");
   assert.equal(tooltipText(claude, { report: null, lastGood: null, installed: null }, NOW), "Claude · loading…");
 });
+
+// ---- barModel / chooseDensity (Task 4) ----
+import { barModel, chooseDensity } from "../lib/view.js";
+import codex from "../providers/codex.js";
+
+const PREFS = { hidden: [], hiddenWindows: [] };
+const ok = (p, file, at = NOW) => ({ ...p.parse(read(file), at), observedAt: at });
+const STATES = () => ({
+  claude: { report: ok(claude, "claude-get-usage.max.json"), lastGood: ok(claude, "claude-get-usage.max.json"), installed: true },
+  codex: { report: ok(codex, "codex-app-server.plus.json"), lastGood: ok(codex, "codex-app-server.plus.json"), installed: true },
+});
+
+test("barModel: both providers, all windows, in registry order", () => {
+  const m = barModel(STATES(), PREFS, NOW);
+  assert.equal(m.empty, false);
+  assert.deepEqual(m.groups.map((g) => [g.providerId, g.name, g.icon, g.mark, g.dim]), [
+    ["claude", "Claude", "icons/claude.svg", null, false],
+    ["codex", "Codex", "icons/codex.svg", null, false],
+  ]);
+  assert.deepEqual(m.groups[0].segments.map((s) => s.short), ["5h", "wk", "Fable"]);
+});
+
+test("barModel: hidden provider and hidden window are dropped", () => {
+  const m = barModel(STATES(), { hidden: ["codex"], hiddenWindows: ["claude:session"] }, NOW);
+  assert.deepEqual(m.groups.map((g) => g.providerId), ["claude"]);
+  assert.deepEqual(m.groups[0].segments.map((s) => s.id), ["weekly_all", "weekly_scoped:Fable"]);
+});
+
+test("barModel: failing provider keeps last good reading, dimmed, with '!'", () => {
+  const s = STATES();
+  s.claude.report = { status: "error", message: "offline", plan: null, observedAt: NOW, source: "claude CLI", windows: [] };
+  const g = barModel(s, PREFS, NOW).groups[0];
+  assert.deepEqual([g.mark, g.dim, g.segments.length], ["!", true, 3]);
+});
+
+test("barModel: failing provider with no last reading → '!' and no segments", () => {
+  const s = STATES();
+  s.codex = { report: { status: "error", message: "x", plan: null, observedAt: NOW, source: "s", windows: [] }, lastGood: null, installed: true };
+  const g = barModel(s, PREFS, NOW).groups[1];
+  assert.deepEqual([g.mark, g.segments.length], ["!", 0]);
+});
+
+test("barModel: not installed → absent; loading → '…'", () => {
+  const s = STATES();
+  s.codex = { report: null, lastGood: null, installed: false };
+  s.claude = { report: null, lastGood: null, installed: null };
+  const m = barModel(s, PREFS, NOW);
+  assert.deepEqual(m.groups.map((g) => [g.providerId, g.mark, g.segments.length]), [["claude", "…", 0]]);
+});
+
+test("barModel: reading older than 15 min is dimmed", () => {
+  const s = STATES();
+  s.codex.report = { ...s.codex.report, observedAt: NOW - 901 };
+  assert.equal(barModel(s, PREFS, NOW).groups[1].dim, true);
+});
+
+test("barModel: everything hidden → empty", () => {
+  assert.equal(barModel(STATES(), { hidden: ["claude", "codex"], hiddenWindows: [] }, NOW).empty, true);
+  assert.equal(barModel({}, PREFS, NOW).empty, false, "unknown state = loading groups");
+});
+
+test("chooseDensity: full at 600px, no bars at 400px, percents only at 140px", () => {
+  const m = barModel(STATES(), PREFS, NOW);
+  assert.equal(chooseDensity(m, 600), 0);
+  assert.equal(chooseDensity(m, 400), 1);
+  assert.equal(chooseDensity(m, 140), 2);
+});
