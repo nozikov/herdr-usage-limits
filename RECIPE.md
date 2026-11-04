@@ -23,12 +23,14 @@ It never reads a token.
   - the percent in `foreground`.
 - Colors by percent: under 70 `ansi2` (green), 70–89 `ansi3` (amber), 90+
   `ansi1` (red). Amber and red also color the text and add the time to reset:
-  `92% · 38m`, `74% · 2d 10h`.
+  `92% · 38m`, `74% · 2d 10h`. With "Always show time to reset" ticked, green
+  windows add it too.
 - Hover a group: provider, plan, "updated N min ago", then one line per window
   with its long name, percent, reset time on the local clock (`resets Fri
   14:00`) and pace verdict (`ahead`, `on pace`, `under`).
 - Click the block: a popup with a checkbox per provider and, under it, per
-  window; "Refresh now" (30 s cooldown); a footnote on where data comes from.
+  window; "Always show time to reset" (off by default); "Refresh now" (30 s
+  cooldown); a footnote on where data comes from.
 
 ## How it behaves
 
@@ -61,7 +63,7 @@ It never reads a token.
   ```
 
   Optional presets in `content.props`: `{ "hidden": ["codex"],
-  "hiddenWindows": ["claude:session"] }` (used until the person changes
+  "hiddenWindows": ["claude:session"], "showResetTime": true }` (used until the person changes
   anything in the popup).
 - `mods/usage-limits/`:
   - `main.js`: the only file using `gpui-kit`/`herdr`. Bar or popup by
@@ -72,7 +74,7 @@ It never reads a token.
     parse(text, now) → Report }`; `providers/index.js` lists them in order.
     A new provider is one more file there plus its helper.
   - `lib/`: `report.js` (shapes), `format.js` (time, colors, pace),
-    `prefs.js` (opt-out lists), `view.js` (segments, tooltip, bar model,
+    `prefs.js` (opt-out lists, reset time flag), `view.js` (segments, tooltip, bar model,
     density). Pure; tested with `node --test`.
   - `helpers/claude-usage.sh`: runs `claude -p --safe-mode
     --no-session-persistence --input-format stream-json --output-format

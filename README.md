@@ -41,6 +41,7 @@ to add, no token to read and no model usage to pay for.
 </div>
 
 Amber and red add the time to reset, so you know how long you'd have to wait.
+Tick **Always show time to reset** in the popup to see it on every window.
 
 Hover a provider for its plan, when it last updated, and each window's reset time and
 pace (`ahead`, `on pace`, `under`).
@@ -48,7 +49,7 @@ pace (`ahead`, `on pace`, `under`).
 ## Show only what you watch
 
 <p align="center">
-  <img src="assets/popup.png" width="400" alt="The settings popup: a checkbox per provider and per limit window, and a Refresh now button">
+  <img src="assets/popup.png" width="400" alt="The settings popup: a checkbox per provider and per limit window, Always show time to reset, and a Refresh now button">
 </p>
 
 Click the limits to choose providers and windows. A new window or a CLI you install
@@ -60,7 +61,7 @@ later shows up by itself, and hidden providers aren't fetched at all.
 - **Old numbers look old.** Anything over 15 minutes old is dimmed.
 - **A passed reset shows `—`** until the next reading, never a made-up 0%.
 - **Codex's session log is only a fallback.** It's marked as a past reading, never as live.
-- **Narrow window?** Bars go first, then labels. Percents and providers stay.
+- **Narrow window?** Bars go first, then labels, then the time on calm windows. Percents and providers stay.
 
 ## Install
 
