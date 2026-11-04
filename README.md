@@ -17,3 +17,7 @@ herdr-app check ~/.config/herdr-app/mods/usage-limits
 
 Herdr doesn't hot-reload a symlinked mod: after editing, switch layouts away
 and back (`herdr-app do layout.switch '{"name":"main"}'`, then your layout).
+
+## License
+
+[MIT](LICENSE)
