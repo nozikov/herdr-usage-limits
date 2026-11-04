@@ -126,5 +126,38 @@ test("chooseDensity: full at 600px, no bars at 400px, percents only at 140px", (
   const m = barModel(STATES(), PREFS, NOW);
   assert.equal(chooseDensity(m, 600), 0);
   assert.equal(chooseDensity(m, 400), 1);
-  assert.equal(chooseDensity(m, 140), 2);
+  assert.equal(chooseDensity(m, 140), 3);
+});
+
+// ---- reset time always on ----
+
+test("showResetTime: a calm window shows its time too", () => {
+  assert.equal(segmentView(W(), NOW, true).text, "50% · 2d 10h");
+});
+
+test("showResetTime off: a calm window stays percent only", () => {
+  assert.equal(segmentView(W(), NOW, false).text, "50%");
+});
+
+test("brief drops the time of a calm window only", () => {
+  assert.equal(segmentView(W(), NOW, true).brief, "50%");
+  assert.equal(segmentView(W({ percent: 74 }), NOW, true).brief, "74% · 2d 10h");
+});
+
+test("showResetTime: no reset known, or already passed, adds no time", () => {
+  assert.equal(segmentView(W({ resetsAt: null }), NOW, true).text, "50%");
+  const s = segmentView(W({ resetsAt: NOW - 1 }), NOW, true);
+  assert.deepEqual([s.text, s.brief], ["—", "—"]);
+});
+
+test("barModel: applies showResetTime from prefs", () => {
+  const texts = (prefs) => barModel(STATES(), prefs, NOW).groups[0].segments.map((s) => s.text);
+  assert.ok(texts({ ...PREFS, showResetTime: true }).every((t) => t.includes(" · ")));
+  assert.ok(!texts(PREFS).some((t) => t.includes(" · ")));
+});
+
+test("chooseDensity: times of calm windows go last, so providers still fit", () => {
+  const on = barModel(STATES(), { ...PREFS, showResetTime: true }, NOW);
+  assert.equal(chooseDensity(on, 2000), 0);
+  assert.equal(chooseDensity(on, 300), 3);
 });

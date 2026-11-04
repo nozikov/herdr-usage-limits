@@ -5,16 +5,20 @@ import { PROVIDERS } from "../providers/index.js";
 
 const STALE_AFTER = 15 * 60; // s
 
-export function segmentView(w, now) {
+// text is the full reading; brief is what's left when the bar runs out of room:
+// an amber or red window keeps its time, a calm one gives it up.
+export function segmentView(w, now, showResetTime = false) {
   if (w.resetsAt != null && w.resetsAt <= now) {
-    return { id: w.id, short: w.short, text: "—", level: "ok", fill: 0, tick: null, expired: true };
+    return { id: w.id, short: w.short, text: "—", brief: "—", level: "ok", fill: 0, tick: null, expired: true };
   }
   const lv = level(w.percent);
-  const left = lv !== "ok" && w.resetsAt != null ? ` · ${timeLeft(w.resetsAt - now)}` : "";
+  const left = w.resetsAt != null ? ` · ${timeLeft(w.resetsAt - now)}` : "";
+  const brief = `${w.percent}%${lv !== "ok" ? left : ""}`;
   return {
     id: w.id,
     short: w.short,
-    text: `${w.percent}%${left}`,
+    text: showResetTime ? `${w.percent}%${left}` : brief,
+    brief,
     level: lv,
     fill: Math.min(1, Math.max(0, w.percent / 100)),
     tick: pace(w, now)?.elapsed ?? null,
@@ -71,7 +75,7 @@ export function barModel(states, prefs, now, providers = PROVIDERS) {
     }
     const segments = (source?.windows ?? [])
       .filter((w) => isShown(prefs, p.id, w.id))
-      .map((w) => segmentView(w, now));
+      .map((w) => segmentView(w, now, prefs.showResetTime));
     const dim = mark === "!" || (source != null && now - source.observedAt > STALE_AFTER);
     groups.push({ providerId: p.id, name: p.name, icon: p.icon, mark, dim, segments });
   }
@@ -81,17 +85,17 @@ export function barModel(states, prefs, now, providers = PROVIDERS) {
 // Rough text widths at 11.8px (labels 10.5px): enough to pick a density, not to lay out.
 const GROUP = 20; // icon + gaps
 function segmentWidth(s, density) {
-  const text = 7 * s.text.length + 12;
-  if (density === 2) return text;
+  const text = 7 * (density === 3 ? s.brief : s.text).length + 12;
+  if (density >= 2) return text;
   const label = 8 + 6.5 * s.short.length;
   return density === 1 ? label + text : label + 30 + text;
 }
 
-// 0 = label + bar + percent, 1 = no bars, 2 = percents only.
+// 0 = label + bar + percent, 1 = no bars, 2 = no labels, 3 = no time on calm windows.
 export function chooseDensity(model, widthPx) {
-  for (const d of [0, 1, 2]) {
+  for (const d of [0, 1, 2, 3]) {
     const need = model.groups.reduce((sum, g) => sum + GROUP + g.segments.reduce((a, s) => a + segmentWidth(s, d), 0), 0);
     if (need <= widthPx) return d;
   }
-  return 2;
+  return 3;
 }

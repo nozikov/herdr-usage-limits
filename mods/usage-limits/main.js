@@ -8,7 +8,7 @@ import { h_flex, v_flex } from "gpui-base";
 import { exec, theme, run, props, shared, setShared, appHome, openOverlay, closeOverlay } from "herdr";
 import { PROVIDERS } from "./providers/index.js";
 import { barModel, chooseDensity, tooltipText } from "./lib/view.js";
-import { effectivePrefs, isShown, toggleProvider, toggleWindow } from "./lib/prefs.js";
+import { effectivePrefs, isShown, toggleProvider, toggleShowResetTime, toggleWindow } from "./lib/prefs.js";
 import { nextState } from "./lib/state.js";
 
 const MOD = "usage-limits";
@@ -19,10 +19,12 @@ const FETCH_EVERY = 5 * 60;       // s, installed providers
 const MISSING_EVERY = 60 * 60;    // s, not-installed providers
 const REFRESH_COOLDOWN = 30;      // s
 const BAR_W = 30;
+const POPUP_BASE_H = 118;          // px: header, footer, padding, the options row and its rule
+const POPUP_ROW_H = 27;            // px, one provider or window row
 
 const now = () => Math.floor(Date.now() / 1000);
 const states = () => shared(KEY_STATE) ?? {};
-const presets = (p) => ({ hidden: p?.hidden ?? [], hiddenWindows: p?.hiddenWindows ?? [] });
+const presets = (p) => ({ hidden: p?.hidden ?? [], hiddenWindows: p?.hiddenWindows ?? [], showResetTime: p?.showResetTime === true });
 
 function levelColor(level, t) {
   if (level === "hot") return t.ansi1 ?? t.blocked;
@@ -83,7 +85,7 @@ export default class UsageLimits extends View {
       const s = states()[p.id];
       return n + 1 + ((s?.report?.status === "ok" ? s.report : s?.lastGood)?.windows.length ?? 0);
     }, 0);
-    openOverlay({ kind: "popup", mod: MOD, props: { view: "settings", presets: presets(props()) }, width: 300, height: 96 + rows * 24 });
+    openOverlay({ kind: "popup", mod: MOD, props: { view: "settings", presets: presets(props()) }, width: 300, height: POPUP_BASE_H + rows * POPUP_ROW_H });
   }
 
   // ---------- status bar ----------
@@ -96,7 +98,7 @@ export default class UsageLimits extends View {
         div().relative().w(BAR_W).h(4).rounded(2).bg(t.border)
           .child(div().absolute().left(0).top(0).h(4).rounded(2).w(Math.round(BAR_W * s.fill)).bg(color))
           .when(s.tick != null, (b) => b.child(div().absolute().top(-2).left(Math.round(BAR_W * s.tick)).w(1).h(8).bg(t.foreground).opacity(0.75)))))
-      .child(div().whitespace_nowrap().text_color(s.level === "ok" ? (s.text === "—" ? t.dim : t.foreground) : color).child(s.text));
+      .child(div().whitespace_nowrap().text_color(s.level === "ok" ? (s.text === "—" ? t.dim : t.foreground) : color).child(density === 3 ? s.brief : s.text));
   }
 
   renderBar(cx) {
@@ -168,6 +170,9 @@ export default class UsageLimits extends View {
             .on_click((_e, cx) => { setShared(KEY_REFRESH, Date.now()); cx.notify(); }))
           .child(cooling ? "Refreshing…" : "Refresh now")))
       .child(v_flex().gap(1).children(rows))
+      .child(div().h(1).bg(t.border).flex_none())
+      .child(this.check("opt-reset-time", prefs.showResetTime, [div().text_color(t.foreground).child("Always show time to reset")],
+        () => save(toggleShowResetTime(this.prefs())), t))
       .child(div().flex_1())
       .child(div().text_size(10.5).text_color(t.dim).child("Data: claude CLI · codex app-server. No tokens are read."));
   }
