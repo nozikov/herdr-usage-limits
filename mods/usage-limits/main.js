@@ -30,8 +30,9 @@ function levelColor(level, t) {
 }
 
 export default class UsageLimits extends View {
-  init(p, cx) {
-    this.isSettings = p?.view === "settings";
+  init(_props, cx) {
+    // Herdr's props come from props(), not init's first argument (shipped mods ignore it too).
+    this.isSettings = props()?.view === "settings";
     if (this.isSettings) return;
     this.width = 0;
     this.lastFetch = {};   // providerId → epoch s of last attempt
