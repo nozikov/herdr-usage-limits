@@ -14,23 +14,27 @@
 </p>
 
 <p align="center">
-  <a href="#install">Install</a> · <a href="#read-it-at-a-glance">Read it</a> · <a href="#hover-for-the-details">Hover</a> · <a href="#what-it-runs">What it runs</a> · <a href="RECIPE.md">Recipe</a>
+  <a href="#install">Install</a> · <a href="#read-the-bar">Read it</a> · <a href="#hover-for-everything">Hover</a> · <a href="#choose-what-the-bar-shows">Settings</a> · <a href="#what-it-runs">What it runs</a> · <a href="RECIPE.md">Recipe</a>
 </p>
 
 <br>
 
-Every limit window your subscriptions report, in the status bar: 5-hour, weekly and
-per-model weekly. Hover for the details and the settings. It asks your own `claude` and `codex` CLIs, so there is no API key
-to add, no token to read and no model usage to pay for.
+See how much Claude Code and Codex you have left, right in Herdr's status bar:
 
-## Read it at a glance
+- **Your limits:** 5-hour, weekly and per-model, each with a bar and a percent.
+- **Everything on hover:** rest the pointer on the limits for the full picture.
+- **Your current session:** how full the context is, how many messages you've sent, how many times it was compacted.
+
+It asks your own `claude` and `codex` CLIs, so there is no API key to add and no model usage to pay for.
+
+## Read the bar
 
 <p align="center">
   <img src="assets/states.gif" width="100%" alt="The status bar moving from green, through amber, to red as the limits fill up">
 </p>
 
-- **The bar** is how much of the window you've used.
-- **The tick** is how much of the window's time has passed. A bar past its tick means you're burning faster than the window allows.
+- **The bar** is how much of the limit you've used.
+- **The tick** is how much of the time has passed. Bar past the tick? You're using it up too fast.
 
 <div align="center">
 
@@ -40,32 +44,43 @@ to add, no token to read and no model usage to pay for.
 
 </div>
 
-Amber and red add the time to reset, so you know how long you'd have to wait.
-Tick **Always show time to reset** in the settings to see it on every window, green
-ones too:
+From amber on, you also see the time left until the limit resets.
+
+## Hover for everything
 
 <p align="center">
-  <img src="assets/reset-time.png" width="100%" alt="Two status bars: by default only amber and red windows show their time to reset; with the option ticked, every window does">
+  <img src="assets/card.png" width="440" alt="The hover panel: the current session's context, calls and compactions, then each provider with its plan and last update and a bar, percent, time to reset, reset clock and pace for every limit, with refresh and settings buttons">
 </p>
 
-## Hover for the details
+Rest the pointer on the limits. The panel shows every limit, when it resets and whether
+you're on pace. ↻ refreshes, ⚙ opens the settings.
+
+The block at the top is the session in the terminal you're focused on, and it changes
+when you switch terminals:
+
+- **Context:** how much of it is filled. Codex shows a percent. Claude Code shows tokens, because its session log doesn't say how big the window is.
+- **Calls:** how many messages you've sent.
+- **Compactions:** how many times the conversation was compacted. Claude Code only, for now.
+
+## Choose what the bar shows
 
 <p align="center">
-  <img src="assets/card.png" width="440" alt="The hover panel: each provider with its plan and last update, then a bar, percent, time to reset, reset clock and pace for every limit window, with refresh and settings buttons">
+  <img src="assets/settings.png" width="440" alt="The settings side of the panel: a back arrow, a checkbox per provider and per limit, Always show time to reset, and checkboxes for the session's context, calls and compactions">
 </p>
 
-Rest the pointer on the limits for a panel with every window: its bar, percent, time to
-reset, reset clock and pace (`ahead`, `on pace`, `under`). It shows windows you've
-hidden from the bar too. ↻ refreshes, ⚙ opens the settings.
+Click ⚙ in the panel. The checkboxes only change the bar: the panel always shows everything.
 
-## Show only what you watch
+- **Claude, Codex and their limits** are on by default. Untick what you don't watch.
+- **Always show time to reset** adds the time to every limit, green ones too.
+- **This session** puts the numbers on the bar: `ctx` for context, `⇄` for calls, `▼` for compactions.
 
 <p align="center">
-  <img src="assets/settings.png" width="440" alt="The settings side of the panel: a back arrow, a checkbox per provider and per limit window, and Always show time to reset">
+  <img src="assets/reset-time.png" width="100%" alt="Two status bars: by default only amber and red limits show their time to reset; with the option ticked, every limit does">
 </p>
 
-⚙ turns the panel around to choose providers and windows, ← turns it back. A new window or a CLI you install
-later shows up by itself, and hidden providers aren't fetched at all.
+<p align="center">
+  <img src="assets/session-bar.png" width="100%" alt="The status bar with context, calls and compactions on its left: ctx 182k, 32 calls, 2 compactions, then the limits">
+</p>
 
 ## It doesn't guess
 
@@ -106,7 +121,9 @@ Give the block more weight if you want the bars to stay when a window gets tight
 ## What it runs
 
 - `sh`, your `claude` CLI and your `codex` CLI, each briefly, every 5 minutes. They use their own sign-ins and talk to Anthropic and OpenAI. The mod makes no network requests itself.
-- It reads no token or credential file. It reads `~/.codex/sessions/**/*.jsonl` only as a fallback.
+- `hc`, to find the agent in the focused terminal, and `lsof`, to find Codex's open session file.
+- It reads no token or credential file.
+- It reads the focused session's log (`~/.claude/projects/`, `~/.codex/sessions/`), which holds your conversation. `helpers/session.sh` passes on numbers only. `~/.codex/sessions/**/*.jsonl` is also the fallback for Codex's limits.
 - It sends no prompt and starts no turn, so it uses no model time.
 - It changes no Claude Code or Codex settings.
 
