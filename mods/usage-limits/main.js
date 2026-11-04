@@ -108,17 +108,19 @@ export default class UsageLimits extends View {
     const st = states();
     const model = barModel(st, this.prefs(), now());
     const density = this.width ? chooseDensity(model, this.width - 24) : 0;
-    const root = h_flex().id("root").size_full().px(12).gap(14).items_center().justify_end().overflow_hidden()
+    const root = h_flex().id("root").size_full().px(12).items_center().justify_end().overflow_hidden()
       .bg(t.chrome).border_t(1).border_color(t.border).text_size(11.8).text_color(t.muted)
-      .on_size_change((size, cx) => { this.width = size.width; cx.notify(); })
+      .on_size_change((size, cx) => { this.width = size.width; cx.notify(); });
+    // Only the limits themselves open the popup, not the empty rest of the block.
+    const content = h_flex().id("ul-content").gap(14).items_center().flex_none().cursor_pointer()
       .on_click(() => this.openSettings());
     if (model.empty) {
-      return root.child(div().id("ul-empty").tooltip("Usage limits: everything is hidden. Click to choose.").child(svg(`mods/${MOD}/icons/gauge.svg`).size(14)));
+      return root.child(content.child(div().id("ul-empty").tooltip("Usage limits: everything is hidden. Click to choose.").child(svg(`mods/${MOD}/icons/gauge.svg`).size(14))));
     }
     model.groups.forEach((g, i) => {
       const p = PROVIDERS.find((x) => x.id === g.providerId);
-      if (i > 0) root.child(div().w(1).h(14).bg(t.border).flex_none());
-      root.child(
+      if (i > 0) content.child(div().w(1).h(14).bg(t.border).flex_none());
+      content.child(
         h_flex().id(`ul-${g.providerId}`).gap(density === 0 ? 10 : 8).items_center().flex_none()
           .opacity(g.dim ? 0.55 : 1)
           .tooltip(tooltipText(p, st[g.providerId] ?? { report: null, lastGood: null, installed: null }, now()))
@@ -126,7 +128,7 @@ export default class UsageLimits extends View {
           .when(g.mark != null, (e) => e.child(div().text_color(t.dim).child(g.mark)))
           .children(g.segments.map((s) => this.segment(s, density, t))));
     });
-    return root;
+    return root.child(content);
   }
 
   // ---------- settings popup ----------
