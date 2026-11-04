@@ -3,7 +3,7 @@
 Your Claude Code and Codex subscription limits in the Herdr status bar, always
 in view: every limit window each one reports (5-hour, weekly, per-model weekly
 such as Fable), with a bar, a pace tick, the percent used and, when it gets
-tight, the time to reset. Click it to choose which providers and windows show.
+tight, the time to reset. Hover it for the details and to choose which providers and windows show.
 It never reads a token.
 
 ![Usage limits](preview.png)
@@ -25,12 +25,17 @@ It never reads a token.
   `ansi1` (red). Amber and red also color the text and add the time to reset:
   `92% · 38m`, `74% · 2d 10h`. With "Always show time to reset" ticked, green
   windows add it too.
-- Hover a group: provider, plan, "updated N min ago", then one line per window
-  with its long name, percent, reset time on the local clock (`resets Fri
-  14:00`) and pace verdict (`ahead`, `on pace`, `under`).
-- Click the block: a popup with a checkbox per provider and, under it, per
-  window; "Always show time to reset" (off by default); "Refresh now" (30 s
-  cooldown); a footnote on where data comes from.
+- Hover the limits: one panel above the bar, the only way in (no click), right-aligned, after 350 ms. Each
+  provider with its plan and "updated N min ago", then per window its long
+  name, a bar with the tick, the percent, and below them the time to reset,
+  the local clock and the pace verdict (`2d 4h · Fri 14:00 · on pace`). It
+  shows windows hidden from the bar too, but not hidden providers. A failing
+  provider shows why in red and its last reading dimmed, with its age. ↻
+  refreshes.
+- ⚙ swaps the panel, in place, to settings: a checkbox per provider and, under
+  it, per window; "Always show time to reset" (off by default); a footnote on
+  where data comes from. ← swaps back, and it opens on limits again next time.
+  ↻ has a 30 s cooldown.
 
 ## How it behaves
 
@@ -39,14 +44,15 @@ It never reads a token.
 - Fetches each shown provider at start and every 5 minutes; redraws every
   minute so countdowns and pace move. Hidden providers are not fetched.
 - A provider whose CLI isn't installed is left out of the bar, greyed in the
-  popup, and re-checked hourly. One that is installed but fails (offline, not
+  settings, and re-checked hourly. One that is installed but fails (offline, not
   signed in, CLI changed) stays with a dim `!` and keeps its last good reading,
-  dimmed, with its age in the hover card. Before the first reading: `…`.
+  dimmed, with its age in the panel. Before the first reading: `…`.
 - Readings older than 15 minutes are dimmed (55% opacity).
 - A window whose reset time has passed shows `—` until the next reading: never
   a guessed 0%.
 - Narrow window: bars go first, then labels; percents and providers stay.
-- Everything hidden: a small gauge icon remains, click it to bring things back.
+- Everything hidden: a small gauge icon remains; hover it and the panel opens on
+  settings, with no way back to limits until something is ticked.
 - Choices are opt-out lists, so a new window (another model limit) or a CLI
   installed later shows up by itself.
 
@@ -64,17 +70,17 @@ It never reads a token.
 
   Optional presets in `content.props`: `{ "hidden": ["codex"],
   "hiddenWindows": ["claude:session"], "showResetTime": true }` (used until the person changes
-  anything in the popup).
+  anything in the settings).
 - `mods/usage-limits/`:
-  - `main.js`: the only file using `gpui-kit`/`herdr`. Bar or popup by
-    `props().view`; `exec`, `shared`/`setShared` (`usage-limits.state`,
-    `usage-limits.prefs`, `usage-limits.refresh`), `openOverlay` (popup),
-    `cx.timer.every(60 s)`, built-in `.tooltip(text)`.
+  - `main.js`: the only file using `gpui-kit`/`herdr`. `exec`, `shared`/`setShared` (`usage-limits.state`,
+    `usage-limits.prefs`, `usage-limits.refresh`),
+    `cx.timer.every(60 s)`, `HoverCard` from `gpui-base` for the panel (keep
+    `close_delay` at 300 ms or more: it's how the pointer reaches the panel).
   - `providers/claude.js`, `providers/codex.js`: `{ id, name, icon, helper,
     parse(text, now) → Report }`; `providers/index.js` lists them in order.
     A new provider is one more file there plus its helper.
   - `lib/`: `report.js` (shapes), `format.js` (time, colors, pace),
-    `prefs.js` (opt-out lists, reset time flag), `view.js` (segments, tooltip, bar model,
+    `prefs.js` (opt-out lists, reset time flag), `view.js` (segments, panel and bar models,
     density). Pure; tested with `node --test`.
   - `helpers/claude-usage.sh`: runs `claude -p --safe-mode
     --no-session-persistence --input-format stream-json --output-format
@@ -108,8 +114,14 @@ It never reads a token.
 
 - `get_usage` is an internal Claude Code interface (verified on 2.1.317). If an
   update changes it, Claude shows `!` with the error instead of numbers.
+- `svg()` and `image()` don't follow a symlink out of Herdr's home: icons of a
+  symlinked mod draw blank, with no error in `herdr-app status`. Install by
+  copying.
+- A `HoverCard` sits above overlays and can't be closed from a script, so an
+  overlay opened from it ends up underneath: keep settings inside it. It doesn't
+  report closing either: `panelOnEnter` works that out when the pointer returns.
 - Claude's resets land a fraction of a second before the minute
-  (`13:59:59.6`): round to the minute, or the hover card says 13:59.
+  (`13:59:59.6`): round to the minute, or the panel says 13:59.
 - `sh missing.sh` exits 127 too; a test for "CLI not found" must also check
   the helper itself ran.
 - Keep the stdin of `claude`/`codex` open through a FIFO and kill the CLI
@@ -131,5 +143,6 @@ It never reads a token.
   `"id":2` line in ~1–2 s.
 - The bar shows the same numbers as Claude Code's `/usage` and Codex's
   `/status`.
-- Clicking opens the popup; unticking Codex removes it from the bar and it
+- Hovering opens the panel above the bar and moving onto it keeps it open.
+- ⚙ swaps it to settings; unticking Codex removes it from the bar and it
   stays removed after restarting Herdr.

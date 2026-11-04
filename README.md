@@ -14,13 +14,13 @@
 </p>
 
 <p align="center">
-  <a href="#install">Install</a> · <a href="#read-it-at-a-glance">Read it</a> · <a href="#what-it-runs">What it runs</a> · <a href="RECIPE.md">Recipe</a>
+  <a href="#install">Install</a> · <a href="#read-it-at-a-glance">Read it</a> · <a href="#hover-for-the-details">Hover</a> · <a href="#what-it-runs">What it runs</a> · <a href="RECIPE.md">Recipe</a>
 </p>
 
 <br>
 
 Every limit window your subscriptions report, in the status bar: 5-hour, weekly and
-per-model weekly. It asks your own `claude` and `codex` CLIs, so there is no API key
+per-model weekly. Hover for the details and the settings. It asks your own `claude` and `codex` CLIs, so there is no API key
 to add, no token to read and no model usage to pay for.
 
 ## Read it at a glance
@@ -41,18 +41,30 @@ to add, no token to read and no model usage to pay for.
 </div>
 
 Amber and red add the time to reset, so you know how long you'd have to wait.
-Tick **Always show time to reset** in the popup to see it on every window.
+Tick **Always show time to reset** in the settings to see it on every window, green
+ones too:
 
-Hover a provider for its plan, when it last updated, and each window's reset time and
-pace (`ahead`, `on pace`, `under`).
+<p align="center">
+  <img src="assets/reset-time.png" width="100%" alt="Two status bars: by default only amber and red windows show their time to reset; with the option ticked, every window does">
+</p>
+
+## Hover for the details
+
+<p align="center">
+  <img src="assets/card.png" width="440" alt="The hover panel: each provider with its plan and last update, then a bar, percent, time to reset, reset clock and pace for every limit window, with refresh and settings buttons">
+</p>
+
+Rest the pointer on the limits for a panel with every window: its bar, percent, time to
+reset, reset clock and pace (`ahead`, `on pace`, `under`). It shows windows you've
+hidden from the bar too. ↻ refreshes, ⚙ opens the settings.
 
 ## Show only what you watch
 
 <p align="center">
-  <img src="assets/popup.png" width="400" alt="The settings popup: a checkbox per provider and per limit window, Always show time to reset, and a Refresh now button">
+  <img src="assets/settings.png" width="440" alt="The settings side of the panel: a back arrow, a checkbox per provider and per limit window, and Always show time to reset">
 </p>
 
-Click the limits to choose providers and windows. A new window or a CLI you install
+⚙ turns the panel around to choose providers and windows, ← turns it back. A new window or a CLI you install
 later shows up by itself, and hidden providers aren't fetched at all.
 
 ## It doesn't guess
@@ -104,13 +116,14 @@ Give the block more weight if you want the bars to stay when a window gets tight
 ## Develop
 
 ```sh
-ln -s "$PWD/mods/usage-limits" ~/.config/herdr-app/mods/usage-limits
+rsync -a --delete mods/usage-limits/ ~/.config/herdr-app/mods/usage-limits/
 npm test                                    # node --test, no dependencies
 herdr-app check ~/.config/herdr-app/mods/usage-limits
 ```
 
-Herdr doesn't hot-reload a symlinked mod: after editing, switch layouts away and back
-(`herdr-app do layout.switch '{"name":"main"}'`, then your layout).
+Copy the mod, don't symlink it: Herdr won't load icons through a link that leaves its
+home, so ↻ and ⚙ would be blank. It doesn't hot-reload either: after copying, switch
+layouts away and back (`herdr-app do layout.switch '{"name":"main"}'`, then your layout).
 
 [RECIPE.md](RECIPE.md) is the brief to build the mod from scratch. A new provider is
 one file in `providers/` plus its helper.
@@ -120,6 +133,7 @@ one file in `providers/` plus its helper.
 The approach for Claude's `get_usage` comes from
 [jmalicki/herdr-mod-ai-usage](https://github.com/jmalicki/herdr-mod-ai-usage) (MIT).
 Screenshots are the real mod in a demo window, with sample numbers.
+The panel's icons are from [Lucide](https://lucide.dev) (ISC).
 
 ## License
 
