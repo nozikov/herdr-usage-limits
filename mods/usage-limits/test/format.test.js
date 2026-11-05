@@ -1,7 +1,7 @@
 process.env.TZ = "UTC";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { timeLeft, resetClock, level, pace, ago } from "../lib/format.js";
+import { timeLeft, level, pace, ago } from "../lib/format.js";
 import { tokens } from "../lib/format.js";
 
 const NOW = Date.UTC(2026, 10, 4, 8, 0, 0) / 1000; // Wed 2026-11-04 08:00 UTC
@@ -12,11 +12,6 @@ test("timeLeft", () => {
   assert.equal(timeLeft(2 * 86400 + 6 * 3600), "2d 6h");
   assert.equal(timeLeft(20), "<1m");
   assert.equal(timeLeft(-5), "<1m");
-});
-
-test("resetClock: same day → time only, otherwise weekday + time", () => {
-  assert.equal(resetClock(NOW + 9 * 3600, NOW), "17:00");
-  assert.equal(resetClock(Date.UTC(2026, 10, 6, 14, 0) / 1000, NOW), "Fri 14:00");
 });
 
 test("level thresholds", () => {

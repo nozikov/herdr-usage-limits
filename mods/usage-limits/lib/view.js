@@ -1,5 +1,5 @@
 // What the bar and its hover card show, as plain data. Pure: no Herdr imports.
-import { timeLeft, resetClock, level, pace, ago } from "./format.js";
+import { timeLeft, level, pace, ago } from "./format.js";
 import { isShown } from "./prefs.js";
 import { PROVIDERS } from "../providers/index.js";
 
@@ -30,24 +30,17 @@ const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function cardRow(w, now) {
   if (w.resetsAt != null && w.resetsAt <= now) {
-    return { id: w.id, long: w.long, percent: "—", level: "ok", fill: 0, tick: null, detail: "reset, waiting for a new reading" };
+    return { id: w.id, long: w.long, percent: "—", level: "ok", fill: 0, tick: null, left: "", detail: "reset, waiting for a new reading" };
   }
-  const parts = [];
-  if (w.resetsAt != null) {
-    // Round like resetClock does, so "2d 6h" and "Fri 14:00" agree for a 13:59:59.6 reset.
-    const left = Math.round((w.resetsAt - now) / 60) * 60;
-    parts.push(timeLeft(left), resetClock(w.resetsAt, now));
-  }
-  const p = pace(w, now);
-  if (p) parts.push(p.verdict);
   return {
     id: w.id,
     long: w.long,
     percent: `${w.percent}%`,
     level: level(w.percent),
     fill: Math.min(1, Math.max(0, w.percent / 100)),
-    tick: p?.elapsed ?? null,
-    detail: parts.join(" · "),
+    tick: pace(w, now)?.elapsed ?? null,
+    left: w.resetsAt != null ? timeLeft(w.resetsAt - now) : "",
+    detail: "",
   };
 }
 
@@ -116,8 +109,8 @@ function segmentWidth(s, density) {
 }
 
 // 0 = label + bar + percent, 1 = no bars, 2 = no labels, 3 = no time on calm windows.
-export function chooseDensity(model, widthPx) {
-  for (const d of [0, 1, 2, 3]) {
+export function chooseDensity(model, widthPx, showBars = true) {
+  for (const d of showBars ? [0, 1, 2, 3] : [1, 2, 3]) {
     const need = model.groups.reduce((sum, g) => sum + GROUP + g.segments.reduce((a, s) => a + segmentWidth(s, d), 0), 0);
     if (need <= widthPx) return d;
   }

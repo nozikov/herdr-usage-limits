@@ -8,7 +8,7 @@ import { HoverCard, h_flex, v_flex } from "gpui-base";
 import { exec, focused, theme, props, shared, setShared, appHome } from "herdr";
 import { PROVIDERS } from "./providers/index.js";
 import { barModel, cardModel, chooseDensity, panelOnEnter } from "./lib/view.js";
-import { effectivePrefs, isOnBar, isShown, toggleOnBar, toggleProvider, toggleShowResetTime, toggleWindow } from "./lib/prefs.js";
+import { effectivePrefs, isOnBar, isShown, toggleOnBar, toggleProvider, toggleShowBars, toggleShowResetTime, toggleWindow } from "./lib/prefs.js";
 import { parseSession, sessionOnBar, sessionView } from "./lib/session.js";
 import { nextState } from "./lib/state.js";
 
@@ -23,7 +23,9 @@ const SESSION_EVERY = 10 * 1000;   // ms, at most this often on hover
 const AGENTS = { "claude-code": "claude", codex: "codex" }; // Herdr's app name → session.sh
 const BAR_W = 30;
 const PANEL_W = 340;
-const PANEL_BAR_W = 130;
+const PANEL_BAR_W = 110;
+const SESSION_BAR_W = 60;
+const LEFT_W = 48;                   // the time-left column in the panel
 const PANEL_OPEN_DELAY = 350;       // ms, so passing over the bar doesn't flash it
 const PANEL_CLOSE_DELAY = 300;      // ms, lets the pointer cross from the bar to the card
 
@@ -37,6 +39,9 @@ function levelColor(level, t) {
 }
 
 const textColor = (level, text, t) => (level === "ok" ? (text === "—" ? t.dim : t.foreground) : levelColor(level, t));
+
+// A limit's number always wears its level, green included; session numbers don't.
+const limitColor = (level, text, t) => (text === "—" ? t.dim : levelColor(level, t));
 
 function usageBar(width, fill, tick, color, t) {
   return div().relative().w(width).h(4).rounded(2).bg(t.border).flex_none()
@@ -163,16 +168,17 @@ export default class UsageLimits extends View {
     return h_flex().gap(5).items_center().flex_none()
       .when(density < 2, (e) => e.child(div().text_size(10.5).text_color(t.dim).child(s.short)))
       .when(density === 0, (e) => e.child(usageBar(BAR_W, s.fill, s.tick, color, t)))
-      .child(div().whitespace_nowrap().text_color(textColor(s.level, s.text, t)).child(density === 3 ? s.brief : s.text));
+      .child(div().whitespace_nowrap().text_color(limitColor(s.level, s.text, t)).child(density === 3 ? s.brief : s.text));
   }
 
   renderBar(cx) {
     const t = theme();
     const st = states();
-    const model = barModel(st, this.prefs(), now());
-    const numbers = sessionOnBar(this.session?.data, this.prefs());
+    const prefs = this.prefs();
+    const model = barModel(st, prefs, now());
+    const numbers = sessionOnBar(this.session?.data, prefs);
     const numbersWidth = numbers.reduce((w, n) => w + 7 * n.text.length + 14, numbers.length ? 14 : 0);
-    const density = this.width ? chooseDensity(model, this.width - 24 - numbersWidth) : 0;
+    const density = chooseDensity(model, this.width ? this.width - 24 - numbersWidth : Infinity, prefs.showBars);
     const root = h_flex().id("root").size_full().px(12).items_center().justify_end().overflow_hidden()
       .bg(t.chrome).border_t(1).border_color(t.border).text_size(11.8).text_color(t.muted)
       .on_size_change((size, cx) => { this.width = size.width; cx.notify(); });
@@ -208,7 +214,8 @@ export default class UsageLimits extends View {
       .child(h_flex().gap(8).items_center()
         .child(div().flex_1().min_w(0).truncate().text_color(t.muted).child(r.long))
         .child(usageBar(PANEL_BAR_W, r.fill, r.tick, levelColor(r.level, t), t))
-        .child(div().w(36).flex_none().flex().justify_end().whitespace_nowrap().text_color(textColor(r.level, r.percent, t)).child(r.percent)))
+        .child(div().w(36).flex_none().flex().justify_end().whitespace_nowrap().text_color(limitColor(r.level, r.percent, t)).child(r.percent))
+        .child(div().w(LEFT_W).flex_none().flex().justify_end().whitespace_nowrap().text_size(11).text_color(t.dim).child(r.left)))
       .when(r.detail !== "", (e) => e.child(div().text_size(11).text_color(t.dim).truncate().child(r.detail)));
   }
 
@@ -217,26 +224,22 @@ export default class UsageLimits extends View {
       .child(h_flex().gap(6).items_center()
         .child(image(g.icon).size(13))
         .child(div().flex_none().font_semibold().child(g.name))
-        .when(g.plan != null, (e) => e.child(div().flex_none().text_color(t.dim).child(g.plan)))
+        .when(g.plan != null, (e) => e.child(div().flex_none().px(5).rounded(4).bg(t.raised).text_size(10).text_color(t.accent).child(g.plan)))
         .child(div().flex_1())
         .child(div().min_w(0).truncate().text_size(11).text_color(g.failed ? levelColor("hot", t) : t.dim).child(g.status)))
       .when(g.age != null, (e) => e.child(div().text_size(11).text_color(t.dim).child(g.age)))
-      .child(v_flex().gap(8).opacity(g.dim ? 0.55 : 1).children(g.rows.map((r) => this.cardRow(r, t))));
+      .child(v_flex().gap(6).opacity(g.dim ? 0.55 : 1).children(g.rows.map((r) => this.cardRow(r, t))));
   }
 
   sessionBlock(v, t) {
-    const stats = [v.calls, v.compactions].filter(Boolean).join(" · ");
-    return v_flex().gap(6)
+    const stats = [v.context.detail, v.calls, v.compactions, v.last].filter(Boolean).join(" · ");
+    return v_flex().gap(4)
       .child(h_flex().gap(6).items_center()
         .child(div().flex_none().font_semibold().child("This session"))
-        .child(div().min_w(0).truncate().text_color(t.dim).child(v.title)))
-      .child(h_flex().gap(8).items_center()
-        .child(div().flex_1().min_w(0).truncate().text_color(t.muted).child("Context"))
-        .when(v.context.fill != null, (r) => r.child(usageBar(PANEL_BAR_W, v.context.fill, null, levelColor(v.context.level, t), t)))
-        .child(div().flex_none().whitespace_nowrap().text_color(textColor(v.context.level, v.context.text, t)).child(v.context.text)))
-      .when(v.context.detail != null, (e) => e.child(div().text_size(11).text_color(t.dim).child(v.context.detail)))
-      .child(div().text_color(t.muted).child(stats))
-      .when(v.last != null, (e) => e.child(div().text_size(11).text_color(t.dim).child(v.last)));
+        .child(div().flex_1().min_w(0).truncate().text_color(t.dim).child(v.title))
+        .when(v.context.fill != null, (r) => r.child(usageBar(SESSION_BAR_W, v.context.fill, null, levelColor(v.context.level, t), t)))
+        .child(div().flex_none().whitespace_nowrap().text_color(textColor(v.context.level, v.context.text, t)).child(`ctx ${v.context.text}`)))
+      .child(div().text_size(11).text_color(t.dim).child(stats));
   }
 
   iconButton(id, icon, label, enabled, onClick, t) {
@@ -305,6 +308,8 @@ export default class UsageLimits extends View {
       .child(div().h(1).bg(t.border).flex_none())
       .child(this.check("opt-reset-time", prefs.showResetTime, [div().text_color(t.foreground).child("Always show time to reset")],
         () => save(toggleShowResetTime(this.prefs())), t))
+      .child(this.check("opt-bars", prefs.showBars, [div().text_color(t.foreground).child("Show bars")],
+        () => save(toggleShowBars(this.prefs())), t))
       .child(div().h(1).bg(t.border).flex_none())
       .child(v_flex().gap(1)
         .child(div().font_semibold().pb(3).child("This session"))

@@ -3,7 +3,6 @@
 const WARN = 70;
 const HOT = 90;
 const PACE_MARGIN = 10; // percentage points before "ahead" / "under"
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export function timeLeft(sec) {
   const s = Math.max(0, Math.floor(sec));
@@ -22,16 +21,6 @@ export function tokens(n) {
   return `${(n / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
 }
 
-const pad = (n) => String(n).padStart(2, "0");
-
-// Local clock: "17:00" today, "Fri 17:00" on another day.
-export function resetClock(epoch, now) {
-  // Resets land a fraction of a second off the minute (13:59:59.6): round, don't truncate.
-  const at = new Date(Math.round(epoch / 60) * 60 * 1000);
-  const today = new Date(now * 1000);
-  const time = `${pad(at.getHours())}:${pad(at.getMinutes())}`;
-  return at.toDateString() === today.toDateString() ? time : `${DAYS[at.getDay()]} ${time}`;
-}
 
 export function level(percent) {
   if (percent >= HOT) return "hot";

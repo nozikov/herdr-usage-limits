@@ -1,13 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { effectivePrefs, isOnBar, isShown, toggleOnBar, toggleProvider, toggleShowResetTime, toggleWindow } from "../lib/prefs.js";
+import { effectivePrefs, isOnBar, isShown, toggleOnBar, toggleProvider, toggleShowBars, toggleShowResetTime, toggleWindow } from "../lib/prefs.js";
 
 test("layout presets apply until saved prefs exist", () => {
   const props = { hidden: ["codex"], hiddenWindows: ["claude:session"] };
-  assert.deepEqual(effectivePrefs(null, props), { hidden: ["codex"], hiddenWindows: ["claude:session"], showResetTime: false, sessionOnBar: [] });
-  assert.deepEqual(effectivePrefs({ hidden: [], hiddenWindows: [] }, props), { hidden: [], hiddenWindows: [], showResetTime: false, sessionOnBar: [] });
-  assert.deepEqual(effectivePrefs(null, {}), { hidden: [], hiddenWindows: [], showResetTime: false, sessionOnBar: [] });
-  assert.deepEqual(effectivePrefs(undefined, undefined), { hidden: [], hiddenWindows: [], showResetTime: false, sessionOnBar: [] });
+  assert.deepEqual(effectivePrefs(null, props), { hidden: ["codex"], hiddenWindows: ["claude:session"], showResetTime: false, showBars: true, sessionOnBar: [] });
+  assert.deepEqual(effectivePrefs({ hidden: [], hiddenWindows: [] }, props), { hidden: [], hiddenWindows: [], showResetTime: false, showBars: true, sessionOnBar: [] });
+  assert.deepEqual(effectivePrefs(null, {}), { hidden: [], hiddenWindows: [], showResetTime: false, showBars: true, sessionOnBar: [] });
+  assert.deepEqual(effectivePrefs(undefined, undefined), { hidden: [], hiddenWindows: [], showResetTime: false, showBars: true, sessionOnBar: [] });
 });
 
 test("anything not listed is shown, including new windows", () => {
@@ -68,4 +68,16 @@ test("every toggle keeps the other choices", () => {
   const p = { hidden: ["codex"], hiddenWindows: ["a:b"], showResetTime: true, sessionOnBar: ["calls"] };
   for (const q of [toggleProvider(p, "x"), toggleWindow(p, "x", "y"), toggleShowResetTime(p)]) assert.deepEqual(q.sessionOnBar, ["calls"]);
   assert.equal(toggleOnBar(p, "context").showResetTime, true);
+});
+
+test("bars show until switched off, and old saved prefs keep them", () => {
+  assert.equal(effectivePrefs({ hidden: [], hiddenWindows: [] }, null).showBars, true);
+  assert.equal(effectivePrefs({ showBars: false }, null).showBars, false);
+});
+
+test("toggleShowBars flips only that choice", () => {
+  const p = effectivePrefs({ hidden: ["codex"] }, null);
+  const off = toggleShowBars(p);
+  assert.deepEqual(off, { ...p, showBars: false });
+  assert.equal(toggleShowBars(off).showBars, true);
 });

@@ -106,6 +106,12 @@ test("chooseDensity: full at 600px, no bars at 400px, percents only at 140px", (
 
 // ---- reset time always on ----
 
+test("chooseDensity: with bars off it never picks the bars, and still narrows", () => {
+  const m = barModel(STATES(), PREFS, NOW);
+  assert.equal(chooseDensity(m, 600, false), 1);
+  assert.equal(chooseDensity(m, 140, false), chooseDensity(m, 140));
+});
+
 test("showResetTime: a calm window shows its time too", () => {
   assert.equal(segmentView(W(), NOW, true).text, "50% · 2d 10h");
 });
@@ -147,25 +153,26 @@ test("cardModel: a provider's plan, age and one row per window", () => {
   assert.deepEqual(g.rows.map((r) => r.long), ["5-hour", "Weekly", "Weekly · Fable"]);
 });
 
-test("cardModel: a row carries percent, level, bar and detail", () => {
+test("cardModel: a row carries percent, level, bar and time left, on one line", () => {
   const report = { status: "ok", plan: "max", observedAt: NOW, source: "x", windows: [W({ percent: 74, resetsAt: NOW + 58 * 3600 })] };
   const r = cardModel({ claude: { report, lastGood: report, installed: true } }, NOW, [claude]).groups[0].rows[0];
   assert.deepEqual([r.percent, r.level, r.fill], ["74%", "warn", 0.74]);
   assert.ok(Math.abs(r.tick - 0.6548) < 0.001);
-  assert.equal(r.detail, "2d 10h · Fri 18:00 · on pace");
+  assert.equal(r.left, "2d 10h");
+  assert.equal(r.detail, "");
 });
 
-test("cardModel: a row with no known reset has no detail", () => {
+test("cardModel: a row with no known reset has no time left", () => {
   const report = { status: "ok", plan: null, observedAt: NOW, source: "x", windows: [W({ resetsAt: null, durationSec: null })] };
   const g = cardModel({ claude: { report, lastGood: report, installed: true } }, NOW, [claude]).groups[0];
   assert.equal(g.plan, null);
-  assert.equal(g.rows[0].detail, "");
+  assert.deepEqual([g.rows[0].left, g.rows[0].detail], ["", ""]);
 });
 
 test("cardModel: a passed reset shows '—', never a number", () => {
   const report = { status: "ok", plan: null, observedAt: NOW, source: "x", windows: [W({ percent: 95, resetsAt: NOW - 1 })] };
   const r = cardModel({ claude: { report, lastGood: report, installed: true } }, NOW, [claude]).groups[0].rows[0];
-  assert.deepEqual([r.percent, r.level, r.fill, r.tick, r.detail], ["—", "ok", 0, null, "reset, waiting for a new reading"]);
+  assert.deepEqual([r.percent, r.level, r.fill, r.tick, r.left, r.detail], ["—", "ok", 0, null, "", "reset, waiting for a new reading"]);
 });
 
 test("cardModel: not installed providers are left out", () => {
