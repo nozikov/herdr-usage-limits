@@ -49,7 +49,7 @@ From amber on, you also see the time left until the limit resets.
 ## Hover for everything
 
 <p align="center">
-  <img src="assets/card.png" width="440" alt="The hover panel: the current session's context, calls and compactions, then each provider with its plan and last update and a bar, percent, time to reset, reset clock and pace for every limit, with refresh and settings buttons">
+  <img src="assets/card.png" width="440" alt="The hover panel: the current session's context, calls and compactions, then each provider with its plan and last update and one line per limit with a bar, percent and time to reset, with refresh and settings buttons">
 </p>
 
 Rest the pointer on the limits. The panel shows every limit, when it resets and whether
@@ -65,13 +65,14 @@ when you switch terminals:
 ## Choose what the bar shows
 
 <p align="center">
-  <img src="assets/settings.png" width="440" alt="The settings side of the panel: a back arrow, a checkbox per provider and per limit, Always show time to reset, and checkboxes for the session's context, calls and compactions">
+  <img src="assets/settings.png" width="440" alt="The settings side of the panel: a back arrow, a checkbox per provider and per limit, Always show time to reset, Show bars, and checkboxes for the session's context, calls and compactions">
 </p>
 
 Click ⚙ in the panel. The checkboxes only change the bar: the panel always shows everything.
 
 - **Claude, Codex and their limits** are on by default. Untick what you don't watch.
 - **Always show time to reset** adds the time to every limit, green ones too.
+- **Show bars** keeps a bar beside each limit. Untick it for numbers only.
 - **This session** puts the numbers on the bar: `ctx` for context, `⇄` for calls, `▼` for compactions.
 
 <p align="center">

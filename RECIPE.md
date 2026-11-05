@@ -20,15 +20,15 @@ It never reads a token.
   - a 30×4px bar, track `border`, fill = percent used;
   - a 1×8px `foreground` tick at 75% opacity = how much of the window's time
     has passed (pace);
-  - the percent in `foreground`.
+  - the percent in its color.
 - Colors by percent: under 70 `ansi2` (green), 70–89 `ansi3` (amber), 90+
   `ansi1` (red). Amber and red also color the text and add the time to reset:
   `92% · 38m`, `74% · 2d 10h`. With "Always show time to reset" ticked, green
   windows add it too.
 - Hover the limits: one panel above the bar, the only way in (no click), right-aligned, after 350 ms. Each
-  provider with its plan and "updated N min ago", then per window its long
-  name, a bar with the tick, the percent, and below them the time to reset,
-  the local clock and the pace verdict (`2d 4h · Fri 14:00 · on pace`). It
+  provider with its plan as a small badge and "updated N min ago", then one
+  line per window: its long name, a bar with the tick, the percent and the
+  time to reset. The percent always wears its color, green included. It
   shows everything, whatever is hidden from the bar. A failing
   provider shows why in red and its last reading dimmed, with its age. ↻
   refreshes.
@@ -40,7 +40,8 @@ It never reads a token.
   provider is fetched. Session numbers join the bar when ticked (`ctx 24%`,
   `⇄ 32`, `▼ 2`), off by default.
 - ⚙ swaps the panel, in place, to settings: a checkbox per provider and, under
-  it, per window; "Always show time to reset" (off by default); a footnote on
+  it, per window; "Always show time to reset" (off by default); "Show bars" (on by default, off
+  leaves numbers only); a footnote on
   where data comes from. ← swaps back, and it opens on limits again next time.
   ↻ has a 30 s cooldown.
 
