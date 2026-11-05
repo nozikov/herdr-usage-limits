@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/hero.png" width="100%" alt="The Herdr window with Claude Code and Codex limits in its status bar, magnified below it: 5-hour at 92%, weekly at 74%, Fable at 47%">
+  <img src="assets/hero.png" width="100%" alt="Always on the bar, everything on hover: the status bar with session numbers and Claude Code and Codex limits, and above it the hover panel with every limit in full">
 </p>
 
 <h1 align="center">Usage limits for Herdr</h1>
