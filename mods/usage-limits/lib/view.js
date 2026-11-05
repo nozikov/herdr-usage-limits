@@ -28,17 +28,27 @@ export function segmentView(w, now, showResetTime = false) {
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
+const VERDICT = { "on pace": "you're on pace", ahead: "you're using it up too fast", under: "you have room to spare" };
+
+// What the tick means, in this limit's own numbers. No tick, nothing to explain.
+function tickHint(percent, p) {
+  if (!p) return null;
+  return `Tick: ${Math.round(p.elapsed * 100)}% of the time has passed.\nYou've used ${percent}%, so ${VERDICT[p.verdict]}.`;
+}
+
 function cardRow(w, now) {
   if (w.resetsAt != null && w.resetsAt <= now) {
-    return { id: w.id, long: w.long, percent: "—", level: "ok", fill: 0, tick: null, left: "", detail: "reset, waiting for a new reading" };
+    return { id: w.id, long: w.long, percent: "—", level: "ok", fill: 0, tick: null, hint: null, left: "", detail: "reset, waiting for a new reading" };
   }
+  const p = pace(w, now);
   return {
     id: w.id,
     long: w.long,
     percent: `${w.percent}%`,
     level: level(w.percent),
     fill: Math.min(1, Math.max(0, w.percent / 100)),
-    tick: pace(w, now)?.elapsed ?? null,
+    tick: p?.elapsed ?? null,
+    hint: tickHint(w.percent, p),
     left: w.resetsAt != null ? timeLeft(w.resetsAt - now) : "",
     detail: "",
   };

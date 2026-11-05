@@ -28,7 +28,9 @@ It never reads a token.
 - Hover the limits: one panel above the bar, the only way in (no click), right-aligned, after 350 ms. Each
   provider with its plan as a small badge and "updated N min ago", then one
   line per window: its long name, a bar with the tick, the percent and the
-  time to reset. The percent always wears its color, green included. It
+  time to reset. The percent always wears its color, green included. Resting
+  on a line shows what its tick means, in its own numbers (`Tick: 66% of the
+  time has passed. You've used 74%, so you're on pace.`). It
   shows everything, whatever is hidden from the bar. A failing
   provider shows why in red and its last reading dimmed, with its age. ↻
   refreshes.

@@ -209,9 +209,10 @@ export default class UsageLimits extends View {
 
   // ---------- panel: limits ----------
 
-  cardRow(r, t) {
+  cardRow(r, providerId, t) {
     return v_flex().gap(3)
-      .child(h_flex().gap(8).items_center()
+      .child(h_flex().id(`ul-row-${providerId}-${r.id}`).gap(8).items_center()
+        .when(r.hint != null, (e) => e.tooltip(r.hint))
         .child(div().flex_1().min_w(0).truncate().text_color(t.muted).child(r.long))
         .child(usageBar(PANEL_BAR_W, r.fill, r.tick, levelColor(r.level, t), t))
         .child(div().w(36).flex_none().flex().justify_end().whitespace_nowrap().text_color(limitColor(r.level, r.percent, t)).child(r.percent))
@@ -228,7 +229,7 @@ export default class UsageLimits extends View {
         .child(div().flex_1())
         .child(div().min_w(0).truncate().text_size(11).text_color(g.failed ? levelColor("hot", t) : t.dim).child(g.status)))
       .when(g.age != null, (e) => e.child(div().text_size(11).text_color(t.dim).child(g.age)))
-      .child(v_flex().gap(6).opacity(g.dim ? 0.55 : 1).children(g.rows.map((r) => this.cardRow(r, t))));
+      .child(v_flex().gap(6).opacity(g.dim ? 0.55 : 1).children(g.rows.map((r) => this.cardRow(r, g.providerId, t))));
   }
 
   sessionBlock(v, t) {

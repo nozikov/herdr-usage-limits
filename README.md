@@ -52,8 +52,8 @@ From amber on, you also see the time left until the limit resets.
   <img src="assets/card.png" width="440" alt="The hover panel: the current session's context, calls and compactions, then each provider with its plan and last update and one line per limit with a bar, percent and time to reset, with refresh and settings buttons">
 </p>
 
-Rest the pointer on the limits. The panel shows every limit, when it resets and whether
-you're on pace. ↻ refreshes, ⚙ opens the settings.
+Rest the pointer on the limits. The panel shows every limit and when it resets. Rest it on a
+limit to see what its tick means in numbers. ↻ refreshes, ⚙ opens the settings.
 
 The block at the top is the session in the terminal you're focused on, and it changes
 when you switch terminals:

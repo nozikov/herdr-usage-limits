@@ -162,6 +162,23 @@ test("cardModel: a row carries percent, level, bar and time left, on one line", 
   assert.equal(r.detail, "");
 });
 
+const hintFor = (w) => {
+  const report = { status: "ok", plan: null, observedAt: NOW, source: "x", windows: [W(w)] };
+  return cardModel({ claude: { report, lastGood: report, installed: true } }, NOW, [claude]).groups[0].rows[0].hint;
+};
+
+test("cardModel: a row's hint explains its tick with its own numbers", () => {
+  const left = { resetsAt: NOW + 58 * 3600 }; // 65% of a week gone
+  assert.equal(hintFor({ percent: 70, ...left }), "Tick: 65% of the time has passed.\nYou've used 70%, so you're on pace.");
+  assert.equal(hintFor({ percent: 92, ...left }), "Tick: 65% of the time has passed.\nYou've used 92%, so you're using it up too fast.");
+  assert.equal(hintFor({ percent: 20, ...left }), "Tick: 65% of the time has passed.\nYou've used 20%, so you have room to spare.");
+});
+
+test("cardModel: no tick, no hint", () => {
+  assert.equal(hintFor({ resetsAt: null, durationSec: null }), null);
+  assert.equal(hintFor({ percent: 95, resetsAt: NOW - 1 }), null);
+});
+
 test("cardModel: a row with no known reset has no time left", () => {
   const report = { status: "ok", plan: null, observedAt: NOW, source: "x", windows: [W({ resetsAt: null, durationSec: null })] };
   const g = cardModel({ claude: { report, lastGood: report, installed: true } }, NOW, [claude]).groups[0];
