@@ -10,7 +10,7 @@
 # Calls are the person's messages: Claude's "last-prompt" marker repeats within a turn.
 #
 # Exit: 0 = printed, 1 = no session found for that process (never a guess).
-# Claude's files follow CLAUDE_CONFIG_DIR.
+# Claude's files follow CLAUDE_CONFIG_DIR, then %USERPROFILE%\.claude, then ~/.claude.
 
 app=$1
 pid=$2
@@ -24,7 +24,14 @@ NUM='function num(s, k,   p) {
 }'
 
 claude() {
-  dir=${CLAUDE_CONFIG_DIR:-$HOME/.claude}
+  # On Windows, Git sh's $HOME can be a network drive while Claude Code keeps
+  # its files under %USERPROFILE%, so that wins when it has a .claude folder.
+  home=$HOME
+  if [ -n "$USERPROFILE" ]; then
+    up=$(cygpath -u "$USERPROFILE" 2>/dev/null || printf '%s' "$USERPROFILE")
+    [ -d "$up/.claude" ] && home=$up
+  fi
+  dir=${CLAUDE_CONFIG_DIR:-$home/.claude}
   [ -f "$dir/sessions/$pid.json" ] || exit 1
   id=$(sed -n 's/.*"sessionId":"\([^"]*\)".*/\1/p' "$dir/sessions/$pid.json")
   case "$id" in '' | *[!0-9a-zA-Z-]*) exit 1 ;; esac

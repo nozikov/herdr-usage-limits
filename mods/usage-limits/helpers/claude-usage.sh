@@ -14,14 +14,16 @@ CLAUDE=$(command -v "${HERDR_USAGE_CLAUDE_BIN:-claude}" 2>/dev/null) || exit 127
 
 dir=$(mktemp -d "${TMPDIR:-/tmp}/herdr-claude-usage.XXXXXX") || exit 1
 out="$dir/out"
-mkfifo "$dir/in" || { rm -rf "$dir"; exit 1; }
 
+# The request comes from a regular file, not a FIFO: on Windows (Git sh) a native
+# claude.exe never answers through mkfifo. The CLI still answers a control request
+# it read before reaching end of input. A file rather than a pipe keeps $! the
+# CLI's own pid in every sh, so the kill below reaches it.
+printf '%s\n' '{"type":"control_request","request_id":"herdr-usage-limits","request":{"subtype":"get_usage","skip_behaviors":true}}' >"$dir/in"
 "$CLAUDE" -p --safe-mode --no-session-persistence \
   --input-format stream-json --output-format stream-json --verbose \
   <"$dir/in" >"$out" 2>/dev/null &
 pid=$!
-exec 3>"$dir/in"
-printf '%s\n' '{"type":"control_request","request_id":"herdr-usage-limits","request":{"subtype":"get_usage","skip_behaviors":true}}' >&3
 
 i=0
 while [ "$i" -lt 75 ]; do
@@ -30,7 +32,6 @@ while [ "$i" -lt 75 ]; do
   sleep 0.2
   i=$((i + 1))
 done
-exec 3>&-
 kill "$pid" 2>/dev/null
 wait "$pid" 2>/dev/null
 
