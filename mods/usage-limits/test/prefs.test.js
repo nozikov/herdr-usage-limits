@@ -1,13 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { effectivePrefs, isOnBar, isShown, toggleOnBar, toggleProvider, toggleShowBars, toggleShowResetTime, toggleWindow } from "../lib/prefs.js";
+import { effectivePrefs, inPanel, isFolded, isOnBar, isShown, spendOnBar, toggleFolded, toggleOnBar, togglePanel, toggleProvider, toggleShowBars, toggleShowResetTime, toggleSpendOnBar, toggleWindow } from "../lib/prefs.js";
 
 test("layout presets apply until saved prefs exist", () => {
   const props = { hidden: ["codex"], hiddenWindows: ["claude:session"] };
-  assert.deepEqual(effectivePrefs(null, props), { hidden: ["codex"], hiddenWindows: ["claude:session"], showResetTime: false, showBars: true, sessionOnBar: [] });
-  assert.deepEqual(effectivePrefs({ hidden: [], hiddenWindows: [] }, props), { hidden: [], hiddenWindows: [], showResetTime: false, showBars: true, sessionOnBar: [] });
-  assert.deepEqual(effectivePrefs(null, {}), { hidden: [], hiddenWindows: [], showResetTime: false, showBars: true, sessionOnBar: [] });
-  assert.deepEqual(effectivePrefs(undefined, undefined), { hidden: [], hiddenWindows: [], showResetTime: false, showBars: true, sessionOnBar: [] });
+  assert.deepEqual(effectivePrefs(null, props), { hidden: ["codex"], hiddenWindows: ["claude:session"], showResetTime: false, showBars: true, sessionOnBar: [], panelHidden: [], folded: [], spendOnBar: {} });
+  assert.deepEqual(effectivePrefs({ hidden: [], hiddenWindows: [] }, props), { hidden: [], hiddenWindows: [], showResetTime: false, showBars: true, sessionOnBar: [], panelHidden: [], folded: [], spendOnBar: {} });
+  assert.deepEqual(effectivePrefs(null, {}), { hidden: [], hiddenWindows: [], showResetTime: false, showBars: true, sessionOnBar: [], panelHidden: [], folded: [], spendOnBar: {} });
+  assert.deepEqual(effectivePrefs(undefined, undefined), { hidden: [], hiddenWindows: [], showResetTime: false, showBars: true, sessionOnBar: [], panelHidden: [], folded: [], spendOnBar: {} });
 });
 
 test("anything not listed is shown, including new windows", () => {
@@ -80,4 +80,36 @@ test("toggleShowBars flips only that choice", () => {
   const off = toggleShowBars(p);
   assert.deepEqual(off, { ...p, showBars: false });
   assert.equal(toggleShowBars(off).showBars, true);
+});
+
+test("old prefs: nothing folded, everything in the panel, no spend choice", () => {
+  const p = effectivePrefs({ hidden: ["codex"], hiddenWindows: ["claude:session"] }, undefined);
+  assert.deepEqual([p.panelHidden, p.folded, p.spendOnBar], [[], [], {}]);
+  assert.equal(inPanel(p, "codex"), true);       // hidden still means the bar only
+  assert.equal(inPanel(p, "session"), true);
+  assert.equal(isFolded(p, "claude"), false);
+  assert.equal(isShown(p, "codex"), false);
+});
+test("panel, fold and spend choices flip and keep the rest", () => {
+  let p = effectivePrefs({ hidden: ["codex"], showResetTime: true }, undefined);
+  p = togglePanel(p, "claude"); p = togglePanel(p, "session"); p = toggleFolded(p, "codex");
+  assert.equal(inPanel(p, "claude"), false);
+  assert.equal(inPanel(p, "session"), false);
+  assert.equal(isFolded(p, "codex"), true);
+  assert.deepEqual([p.hidden, p.showResetTime], [["codex"], true]);
+  assert.equal(inPanel(togglePanel(p, "claude"), "claude"), true);
+});
+test("spend on the bar: default until chosen, then the choice wins", () => {
+  const p = effectivePrefs(null, undefined);
+  assert.equal(spendOnBar(p, "opencode", false), false);
+  assert.equal(spendOnBar(p, "opencode", true), true);
+  const on = toggleSpendOnBar(p, "opencode", false);
+  assert.equal(spendOnBar(on, "opencode", false), true);
+  assert.equal(spendOnBar(toggleSpendOnBar(on, "opencode", true), "opencode", true), false);
+});
+test("every existing toggle keeps the new keys", () => {
+  const p = toggleFolded(togglePanel(effectivePrefs(null, undefined), "pi"), "claude");
+  for (const q of [toggleProvider(p, "codex"), toggleWindow(p, "claude", "session"), toggleShowResetTime(p), toggleShowBars(p), toggleOnBar(p, "calls")]) {
+    assert.deepEqual([q.panelHidden, q.folded], [["pi"], ["claude"]]);
+  }
 });
