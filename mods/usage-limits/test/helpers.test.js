@@ -143,3 +143,55 @@ test("session helper, codex: with two files open, the one being written", () => 
   const r = session(["codex", "123"], { PATH: `${fakeTools([old, live])}:${process.env.PATH}` });
   assert.match(r.stdout, /^tokens=115225 /);
 });
+
+// ---- session.sh pi ----
+
+const runSession = (app, pid, env) => session([app, pid], env);
+
+// $HOME/.pi/agent/sessions/<encoded /home/demo/project>/<start>_<id>.jsonl
+function piHome(files) {
+  const home = mkdtempSync(join(tmpdir(), "ul-pi-"));
+  const dir = join(home, ".pi", "agent", "sessions", "--home-demo-project--");
+  mkdirSync(dir, { recursive: true });
+  for (const [name, text] of Object.entries(files)) writeFileSync(join(dir, name), text);
+  return home;
+}
+const PI = readFileSync(join(HERE, "fixtures", "pi-session.jsonl"), "utf8");
+const piReply = (input, model = "demo-model") =>
+  JSON.stringify({ type: "message", id: "b1", parentId: null, timestamp: "2026-11-02T10:05:02.000Z",
+    message: { role: "assistant", content: [], model, usage: { input, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: input + 1 } } }) + "\n";
+const home = piHome({ "2026-11-02T10-00-00-000Z_x.jsonl": PI });
+const home2 = piHome({ "2026-11-02T10-00-00-000Z_a.jsonl": PI, "2026-11-02T10-05-00-000Z_b.jsonl": piReply(777) });
+
+const piEnv = (home, extra = {}) => ({ HERDR_USAGE_PI_HOME: join(home, ".pi"), HERDR_USAGE_PROC_CWD: "/home/demo/project",
+  HERDR_USAGE_PROC_START: "1793613600", HERDR_USAGE_PROC_PEERS: "1", ...extra }); // 2026-11-02T10:00:00Z
+
+test("pi session: last reply's context, real user messages only, the model", () => {
+  assert.equal(runSession("pi", "4242", piEnv(home)).stdout.trim(), "tokens=50500 calls=4 model=demo-model");
+});
+
+test("pi session: prints no conversation text", () => {
+  assert.doesNotMatch(runSession("pi", "4242", piEnv(home)).stdout, /hello|thanks|README|Done/);
+});
+
+test("pi session: a session that ended before this process started is not its session", () => {
+  assert.equal(runSession("pi", "4242", piEnv(home, { HERDR_USAGE_PROC_START: "1893613600" })).status, 1);
+});
+
+test("pi session: two in one folder, told apart by start time or not at all", () => {
+  // second file started 10:05:00; process started 10:05:01 → the second file
+  assert.match(runSession("pi", "4242", piEnv(home2, { HERDR_USAGE_PROC_PEERS: "2", HERDR_USAGE_PROC_START: "1793613901" })).stdout, /^tokens=777 /);
+  // process started 10:02:30, matching neither → nothing
+  const r = runSession("pi", "4242", piEnv(home2, { HERDR_USAGE_PROC_PEERS: "2", HERDR_USAGE_PROC_START: "1793613750" }));
+  assert.deepEqual([r.status, r.stdout], [1, ""]);
+});
+
+test("pi session: a model id with other characters is dropped, numbers stay", () => {
+  const h = piHome({ "2026-11-02T10-00-00-000Z_x.jsonl": piReply(1234, "bad id;rm") });
+  assert.equal(runSession("pi", "4242", piEnv(h)).stdout, "tokens=1234 calls=0\n");
+});
+
+test("pi session: no folder for that directory → exit 1", () => {
+  const r = runSession("pi", "4242", piEnv(home, { HERDR_USAGE_PROC_CWD: "/home/demo/elsewhere" }));
+  assert.deepEqual([r.status, r.stdout], [1, ""]);
+});

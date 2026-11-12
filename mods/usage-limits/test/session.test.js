@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseSession, sessionView, sessionOnBar } from "../lib/session.js";
+import { AGENT_NAMES, parseSession, sessionView, sessionOnBar } from "../lib/session.js";
 
 const CODEX = "tokens=115225 window=475000 calls=4\n";
 const CLAUDE = "tokens=182010 calls=32 compactions=2 lastTrigger=auto lastPre=259912 lastPost=10364\n";
@@ -82,4 +82,19 @@ test("sessionOnBar: a known window shows a percent, and warns", () => {
 
 test("sessionOnBar: Codex has no compaction number rather than a false 0", () => {
   assert.deepEqual(sessionOnBar(parseSession(CODEX, "codex"), onBar("compactions")), []);
+});
+
+test("pi: who names the agent and the model; claude and codex have none", () => {
+  const s = parseSession("tokens=50500 calls=3 model=demo-model", "pi");
+  assert.equal(s.model, "demo-model");
+  assert.equal(sessionView(s, "project").who, "Pi · demo-model");
+  assert.equal(sessionView(parseSession("tokens=50500 calls=3", "pi"), "p").who, "Pi");
+  assert.equal(sessionView(parseSession("tokens=9 calls=1 compactions=0", "claude"), "p").who, null);
+  assert.equal(sessionView(parseSession(CODEX, "codex"), "p").who, null);
+});
+
+test("pi: a model id the helper would never print is not shown", () => {
+  assert.equal(parseSession("tokens=5 calls=1 model=bad;id", "pi").model, null);
+  assert.equal(AGENT_NAMES.pi, "Pi");
+  assert.equal(AGENT_NAMES.opencode, "OpenCode");
 });

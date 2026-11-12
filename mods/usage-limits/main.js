@@ -20,7 +20,7 @@ const FETCH_EVERY = 5 * 60;       // s, installed providers
 const MISSING_EVERY = 60 * 60;    // s, not-installed providers
 const REFRESH_COOLDOWN = 30;      // s
 const SESSION_EVERY = 10 * 1000;   // ms, at most this often on hover
-const AGENTS = { "claude-code": "claude", codex: "codex" }; // Herdr's app name → session.sh
+const AGENTS = { "claude-code": "claude", codex: "codex", pi: "pi" }; // Herdr's app name → session.sh
 const BAR_W = 30;
 const PANEL_W = 340;
 const PANEL_BAR_W = 110;
@@ -233,7 +233,7 @@ export default class UsageLimits extends View {
   }
 
   sessionBlock(v, t) {
-    const stats = [v.context.detail, v.calls, v.compactions, v.last].filter(Boolean).join(" · ");
+    const stats = [v.who, v.context.detail, v.calls, v.compactions, v.last].filter(Boolean).join(" · ");
     return v_flex().gap(4)
       .child(h_flex().gap(6).items_center()
         .child(div().flex_none().font_semibold().child("This session"))
