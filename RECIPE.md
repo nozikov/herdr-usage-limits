@@ -3,8 +3,9 @@
 Your Claude Code and Codex subscription limits in the Herdr status bar, always
 in view: every limit window each one reports (5-hour, weekly, per-model weekly
 such as Fable), with a bar, a pace tick, the percent used and, when it gets
-tight, the time to reset. Hover it for the details and to choose which providers and windows show.
-It never reads a token.
+tight, the time to reset. OpenCode and Pi, which have no limits, show the tokens
+they spent today and over 7 days. Hover it for the details and to choose what shows
+on the bar and in the panel. It never reads a token.
 
 ![Usage limits](preview.png)
 
@@ -21,6 +22,9 @@ It never reads a token.
   - a 1×8px `foreground` tick at 75% opacity = how much of the window's time
     has passed (pace);
   - the percent in its color.
+- OpenCode and Pi come after Codex, when they are on the bar: the icon
+  (`icons/opencode.svg`, `icons/pi.svg`), a dim `today` and the number
+  (`today 240k`). No bar, tick or percent.
 - Colors by percent: under 70 `ansi2` (green), 70–89 `ansi3` (amber), 90+
   `ansi1` (red). Amber and red also color the text and add the time to reset:
   `92% · 38m`, `74% · 2d 10h`. With "Always show time to reset" ticked, green
@@ -30,41 +34,69 @@ It never reads a token.
   line per window: its long name, a bar with the tick, the percent and the
   time to reset. The percent always wears its color, green included. Resting
   on a line shows what its tick means, in its own numbers (`Tick: 66% of the
-  time has passed. You've used 74%, so you're on pace.`). It
-  shows everything, whatever is hidden from the bar. A failing
+  time has passed. You've used 74%, so you're on pace.`). By
+  default it shows everything, whatever is hidden from the bar. A failing
   provider shows why in red and its last reading dimmed, with its age. ↻
   refreshes.
+- A click on a provider's header folds it to one line: icon, name, plan, then
+  on the rows' columns the dim long name of its tightest window (highest
+  percent, ties to the sooner reset, a passed reset only if it's the only one),
+  a short bar with the tick, the percent and the time left. Folded and failing:
+  `! ` and the reason in red where the window's name goes, the reading dimmed.
+  A chevron sits right after the name and plan: always on a folded line and
+  with three providers or more, else only under the pointer, so a Claude +
+  Codex panel shows none at rest. Everything starts open.
+- OpenCode and Pi are one line each in the same list: icon, name, a dim
+  `Tokens today / 7d`, today's number in the percent column, the 7-day number in
+  the time column. They never fold. Failing: `! ` and the reason in red in place
+  of the label, the last numbers dimmed. Installed but unused for 7 days: not
+  shown, on the bar or in the panel.
 - The panel opens with "This session", for the agent in the focused terminal:
   context (a bar and percent if the window is known, else tokens), calls (the
-  person's messages), compactions and the last one's size. Nothing else focused,
-  no block.
-- Every checkbox is about the bar: the panel always shows everything, so every
-  provider is fetched. Session numbers join the bar when ticked (`ctx 24%`,
-  `⇄ 32`, `▼ 2`), off by default.
-- ⚙ swaps the panel, in place, to settings: a checkbox per provider and, under
-  it, per window; "Always show time to reset" (off by default); "Show bars" (on by default, off
-  leaves numbers only); a footnote on
-  where data comes from. ← swaps back, and it opens on limits again next time.
-  ↻ has a 30 s cooldown.
+  person's messages), compactions and the last one's size. For OpenCode and
+  Pi the second line starts with the agent and its model
+  (`OpenCode · demo-model · 4 calls · 1 compaction`, `Pi · demo-model · 2 calls`);
+  Claude's and Codex's stay as they were.
+  Nothing else focused, no block.
+- Left boxes are about the bar, right boxes about the panel; a provider on
+  neither isn't fetched, and ticking it again fetches it at once. Session
+  numbers join the bar when ticked (`ctx 24%`, `⇄ 32`, `▼ 2`), off by default.
+  OpenCode and Pi are off the bar by default, unless no provider with limits
+  has a reading with a window (its current one or its last good one); that
+  default is worked out live, waits until every fetched limits provider has
+  answered once, and an explicit click always wins.
+- ⚙ swaps the panel, in place, to settings: a header line, `Bar` on the left
+  and `Panel` at the right edge; a row per provider with a bar box on the left
+  and a panel box at the right end, and, under it, a bar box per window; for
+  OpenCode and Pi the left box is "today's tokens on the bar"; "Always show
+  time to reset" (off by default); "Show bars" (on by default, off leaves
+  numbers only); "This session" with its own panel box, and its rows for the
+  bar; a footnote on where data comes from. ← swaps back, and it opens on
+  limits again next time. ↻ has a 30 s cooldown.
 
 ## How it behaves
 
 - Not tied to agent status (working, blocked, done, idle): limits are
   per account, not per agent.
-- Fetches each shown provider at start and every 5 minutes; redraws every
+- Fetches each provider on the bar or in the panel at start and every 5 minutes; redraws every
   minute so countdowns and pace move.
 - A provider whose CLI isn't installed is left out of the bar, greyed in the
-  settings, and re-checked hourly. One that is installed but fails (offline, not
-  signed in, CLI changed) stays with a dim `!` and keeps its last good reading,
-  dimmed, with its age in the panel. Before the first reading: `…`.
+  settings, and re-checked hourly. OpenCode counts as installed when the
+  `opencode` CLI is on PATH; Pi when `~/.pi/agent/sessions` exists. One that is
+  installed but fails (offline, not signed in, CLI changed) stays with a dim `!`
+  and keeps its last good reading, dimmed, with its age in the panel. Before the
+  first reading: `…`. OpenCode or Pi installed but unused for 7 days is greyed in
+  the settings with "no use in 7 days".
 - Readings older than 15 minutes are dimmed (55% opacity).
 - A window whose reset time has passed shows `—` until the next reading: never
   a guessed 0%.
 - Narrow window: bars go first, then labels; percents and providers stay.
 - Everything hidden: a small gauge icon remains, and hovering it opens the panel
-  as usual. With no CLI installed, the panel opens on settings.
+  as usual. With nothing for the panel (no CLI installed, or the session and
+  every provider taken out of it), the panel opens on settings.
 - Choices are opt-out lists, so a new window (another model limit) or a CLI
-  installed later shows up by itself.
+  installed later shows up by itself. Folds and bar/panel choices are stored
+  and survive a restart; only explicit clicks are stored.
 
 ## Built from
 
@@ -80,20 +112,31 @@ It never reads a token.
 
   Optional presets in `content.props`: `{ "hidden": ["codex"],
   "hiddenWindows": ["claude:session"], "showResetTime": true,
-  "sessionOnBar": ["context", "calls", "compactions"] }` (used until the person changes
-  anything in the settings).
+  "sessionOnBar": ["context", "calls", "compactions"], "panelHidden": ["session"],
+  "folded": ["claude"], "spendOnBar": { "opencode": true } }` (used until the person
+  changes anything in the settings). `hidden` and `hiddenWindows` mean "hidden from
+  the bar"; `panelHidden` lists providers, and `"session"`, left out of the panel;
+  `folded` lists folded providers; `spendOnBar` holds an explicit bar choice per
+  spend provider. Every key is optional, so older prefs and presets read as before.
 - `mods/usage-limits/`:
   - `main.js`: the only file using `gpui-kit`/`herdr`. `exec`, `shared`/`setShared` (`usage-limits.state`,
     `usage-limits.prefs`, `usage-limits.refresh`),
     `cx.timer.every(60 s)`, `HoverCard` from `gpui-base` for the panel (keep
     `close_delay` at 300 ms or more: it's how the pointer reaches the panel).
-  - `providers/claude.js`, `providers/codex.js`: `{ id, name, icon, helper,
-    parse(text, now) → Report }`; `providers/index.js` lists them in order.
-    A new provider is one more file there plus its helper.
+  - `providers/claude.js`, `providers/codex.js`, `providers/opencode.js`,
+    `providers/pi.js`: `{ id, name, icon, helper, parse(text, now) → Report }`;
+    OpenCode and Pi add `kind: "spend"`, and their report has no windows and
+    carries `spend: { today, week }`; it goes through the same state path, so
+    "not installed", "failing with a last good reading" and "stale" work as for
+    limits. `providers/index.js` lists them
+    in order. A new provider is one more file there plus its helper.
+  - `icons/`: the mod's own (`gauge`, `refresh`, `gear`, `back`,
+    `chevron-down`, `chevron-right`); the agents' icons come from Herdr's.
   - `lib/`: `report.js` (shapes), `format.js` (time, colors, pace),
-    `prefs.js` (opt-out lists, flags), `session.js` (session line and block),
-    `view.js` (segments, panel and bar models,
-    density). Pure; tested with `node --test`.
+    `prefs.js` (opt-out lists, flags, panel, folds, spend on the bar),
+    `session.js` (session line and block), `state.js` (next provider state),
+    `view.js` (segments, panel and bar models, tightest window, the spend
+    default, what is fetched, density). Pure; tested with `node --test`.
   - `helpers/claude-usage.sh`: runs `claude -p --safe-mode
     --no-session-persistence --input-format stream-json --output-format
     stream-json --verbose`, sends `{"type":"control_request",…,"request":
@@ -109,6 +152,32 @@ It never reads a token.
   - Both helpers: exit 0 with one JSON line, 127 when the CLI isn't found,
     1 on any other failure; ~15 s timeout. `HERDR_USAGE_CLAUDE_BIN` /
     `HERDR_USAGE_CODEX_BIN` override the binaries.
+  - `helpers/opencode-spend.sh`: runs `opencode stats --days 0 --json` and
+    `--days 7 --json` at once, stdin closed, and prints
+    `{"today":…,"week":…}` with both replies whole. Tokens = `input + output +
+    reasoning + cache.read + cache.write`. `--days 7` is today and the six days
+    before (opencode 2.2.5). Exit 127 when `opencode` isn't on PATH, 1 when a
+    call fails or isn't done in 10 s (TERM, then KILL). `HERDR_USAGE_OPENCODE_BIN`
+    overrides the binary.
+  - `helpers/pi-spend.sh`: prints `<ISO timestamp> <totalTokens>` per assistant
+    reply in Pi's session files written in the last 8 days; `providers/pi.js`
+    adds them up by local day (today, and today with the six days before).
+    Never runs `pi`. Exit 127 when `~/.pi/agent/sessions` doesn't exist, 1 when
+    the files can't be read. It has no deadline of its own: `main.js` runs
+    every spend helper with a 15 s `exec` timeout.
+  - `helpers/session.sh claude|codex|opencode|pi <pid>`: one line of numbers,
+    `tokens=N calls=N`, plus `compactions=N` (Claude, OpenCode), `window=N`
+    (Codex), `model=<id>` (OpenCode, Pi; only if it matches
+    `[A-Za-z0-9._:/-]+`). Exit 0 with it, 1 when no session is certain.
+    OpenCode: top-level `session_v2` rows and `session_message` rows of
+    `opencode.db`, through `sqlite3 -readonly`; context = the newest reply's
+    `input + output + reasoning + cache.read + cache.write`. Pi:
+    `~/.pi/agent/sessions/--<cwd with / as ->--/<start>_<id>.jsonl`; context =
+    the last reply's `input + cacheRead + cacheWrite`.
+  - Env overrides: `HERDR_USAGE_PI_HOME` (instead of `~/.pi`),
+    `HERDR_USAGE_OPENCODE_DB` (instead of
+    `${XDG_DATA_HOME:-~/.local/share}/opencode/opencode.db`),
+    `HERDR_USAGE_SQLITE_BIN` (instead of `sqlite3`).
 - Approach for Claude's `get_usage`: credit to
   [jmalicki/herdr-mod-ai-usage](https://github.com/jmalicki/herdr-mod-ai-usage) (MIT).
 
@@ -117,10 +186,19 @@ It never reads a token.
 - Runs `sh`, your `claude` CLI and your `codex` CLI, each briefly, every
   5 minutes. They use their own sign-ins and talk to Anthropic / OpenAI; this
   mod makes no network requests itself.
+- Runs `opencode stats --days 0 --json` and `--days 7 --json` every 5 minutes.
+  Their reply holds counts, costs, model and tool names, no message text; it
+  reaches the mod whole, and the mod uses the token numbers only.
+- Runs `hc`, `ps` and `lsof` to find the agent in the focused terminal, its
+  folder and start time, and Codex's open session file.
 - Reads no token or credential file. Reads `~/.codex/sessions/**/*.jsonl`
   only as a fallback.
+- Reads the focused session: Claude's and Codex's logs, OpenCode's database
+  through `sqlite3`, read-only, and Pi's session files; Pi's files of the last
+  8 days for its tokens. All of them hold the conversation. Only numbers and a
+  model id leave the helpers. Never runs `pi`.
 - Sends no prompt and starts no turn: no model usage.
-- Changes no Claude Code or Codex settings.
+- Changes no Claude Code, Codex, OpenCode or Pi settings.
 
 ## Watch out
 
@@ -136,6 +214,40 @@ It never reads a token.
   agents can share one). `hc get <terminal>` gives `foreground.pid`. Claude:
   `~/.claude/sessions/<pid>.json` has the `sessionId`. Codex: a child
   `app-server` of that pid holds the `rollout-*.jsonl` open (`lsof`).
+- OpenCode and Pi hold no session file open, and Herdr doesn't say which
+  session a terminal shows, so the tie is the process's folder (`lsof`, or
+  `/proc/<pid>/cwd`) and start time (`ps -o etime=`), never the folder alone:
+  two agents can share one. Pi: the session that started with the process
+  (the file name's timestamp within 2 s of the process start) is shown only if
+  no other session in that folder was written after it; a resumed session only
+  when it is the single candidate and started before the process; several Pi
+  processes in one folder are told apart by start time or not at all.
+  OpenCode: exactly one top-level session of that folder updated since the
+  process started, and one terminal client in that folder (its background
+  `opencode serve --service` isn't one); else nothing. So after `/new` inside
+  the agent, or after another copy ran in the same folder, the block is gone
+  for that terminal until the agent restarts. Known risk left: an OpenCode
+  client that has sent nothing yet can be shown a session another short-lived
+  writer made in that folder (a client that came and went, `opencode run`, the
+  desktop or web app), until its own first message makes two candidates.
+- Pi sessions are trees: after `/tree` the last reply in the file can be on
+  another branch than the one on screen. Not handled.
+- Pi is "installed" when `~/.pi/agent/sessions` exists, not when `pi` is on
+  PATH: `pi` can be a shell function (a lazy nvm one) that `sh` can't see.
+  OpenCode is installed when the `opencode` CLI is on PATH.
+- OpenCode records a finished compaction as a `compaction` row in
+  `session_message`; it is counted. Right after one, OpenCode has no token
+  count until the next reply, and the block isn't shown in that gap. Pi's
+  compactions aren't counted: none could be made to happen (the session was too
+  small). Pi's source writes a `{"type":"compaction"}` line, and the helper
+  drops the context after one until the next reply; that is unobserved.
+- Pi's context is the last reply's input and cached tokens; Pi's own footer
+  also counts the reply's output, so it reads slightly higher.
+- `opencode stats` and `sqlite3` can hang: run them with stdin closed and a
+  deadline.
+- Open check: folding makes the `HoverCard`, which grows upward from the bar,
+  slide down under a still pointer, which may then be outside the card and
+  close it. Not yet tried with a real pointer.
 - A Claude turn with a server tool sums `usage` over all its requests, which
   doubles the context: read the last entry of `usage.iterations`.
 - Claude's `last-prompt` marker repeats within a turn (65 for 19 messages): count
@@ -162,9 +274,16 @@ It never reads a token.
 - `sh helpers/claude-usage.sh` prints a `control_response` line in ~1–2 s and
   leaves no `claude` process behind; `sh helpers/codex-limits.sh` prints an
   `"id":2` line in ~1–2 s.
+- `sh helpers/opencode-spend.sh` and `sh helpers/pi-spend.sh` print within a
+  few seconds; `sh helpers/session.sh opencode|pi <pid>` gives the same context
+  and calls as the agent's own screen (Pi's footer a little higher, see above).
 - The bar shows the same numbers as Claude Code's `/usage` and Codex's
   `/status`.
 - Hovering opens the panel above the bar and moving onto it keeps it open.
 - Its session block matches the focused terminal, and changes with focus.
 - ⚙ swaps it to settings; unticking Codex removes it from the bar and it
-  stays removed after restarting Herdr.
+  stays removed after restarting Herdr. The same for its Panel box and the
+  panel, and for a fold.
+- A click on a header folds and unfolds it, and the panel stays open.
+- With only Claude and Codex installed and nothing clicked, the bar and the
+  panel look as before.
