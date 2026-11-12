@@ -81,8 +81,10 @@ For OpenCode and Pi the second line also names the agent and the model: `Pi · d
 
 Click ⚙ in the panel. Each provider has two boxes: the left one, under **Bar**, is about
 the bar; the right one, under **Panel**, is about the panel. They are separate, and by
-default the panel still shows everything. "This session" has a Panel box too. Whatever is
-on neither isn't fetched. Every choice, and every fold, is remembered across restarts.
+default the panel still shows everything. "This session" has a Panel box too. A provider
+on neither the bar nor the panel isn't asked, and the session isn't read while its block
+is out of the panel and none of its numbers is on the bar. Every choice, and every fold, is
+remembered across restarts.
 
 - **Claude, Codex and their limits** are on by default. Untick what you don't watch.
 - **OpenCode and Pi** put today's tokens on the bar: `today 240k`. They're off the bar by default, unless no provider with limits has any numbers; then they're on.
@@ -104,7 +106,7 @@ on neither isn't fetched. Every choice, and every fold, is remembered across res
 - **Old numbers look old.** Anything over 15 minutes old is dimmed.
 - **A passed reset shows `—`** until the next reading, never a made-up 0%.
 - **Codex's session log is only a fallback.** It's marked as a past reading, never as live.
-- **No session rather than the wrong one.** OpenCode and Pi don't say which session a terminal shows, so the mod ties them by folder and start time, and shows nothing when that isn't certain. After `/new` inside the agent, or after another copy of it ran in the same folder, the block goes away for that terminal until you restart the agent. One gap is left: an OpenCode that hasn't sent anything since it started can show a session another short-lived OpenCode wrote in that folder, until its own first message.
+- **No session rather than the wrong one.** OpenCode and Pi don't say which session a terminal shows, so the mod ties them by folder and start time, and shows nothing when that isn't certain. With one copy of the agent in the folder, `/new` takes the block away. OpenCode's then stays away until you restart it, as it does after another OpenCode wrote in that folder. Pi's is away whenever another session in the folder was written after the one this Pi started with: while another Pi writes there (it comes back at this Pi's next reply), and after `/new` (until Pi is restarted). Right after OpenCode compacts, the block isn't shown until its next reply, as OpenCode itself has no count then. Two gaps are left: an OpenCode that hasn't sent anything since it started can show a session another short-lived OpenCode wrote in that folder, until its own first message; and with several Pi in one folder, a terminal whose Pi did `/new` keeps showing that terminal's previous session, because nothing on disk tells that apart from another Pi writing.
 - **A failing token count says so too.** It keeps its last good numbers, dimmed.
 - **Narrow window?** Bars go first, then labels, then the time on calm windows. Percents and providers stay.
 
@@ -140,11 +142,11 @@ Give the block more weight if you want the bars to stay when a window gets tight
 ## What it runs
 
 - `sh`, your `claude` CLI and your `codex` CLI, each briefly, every 5 minutes. They use their own sign-ins and talk to Anthropic and OpenAI. The mod makes no network requests itself.
-- `opencode stats --days 0 --json` and `opencode stats --days 7 --json`, every 5 minutes, for OpenCode's tokens. Their reply holds counts, costs and model and tool names, no message text; it reaches the mod whole, and the mod uses the token numbers only.
-- `hc`, to find the agent in the focused terminal, `lsof`, to find Codex's open session file, and `ps` and `lsof`, to find an OpenCode or Pi process's folder and start time.
+- `opencode stats --days 0 --json` and `opencode stats --days 7 --json`, every 5 minutes, for OpenCode's tokens. Their reply holds counts, costs, model and tool names and dates, no message text; it reaches the mod whole, and the mod uses its token numbers only.
+- `hc`, to find the agent in the focused terminal, `lsof`, to find Codex's open session file, and `ps` and `lsof`, to find an OpenCode or Pi process's folder and start time. `ps` also lists your processes, to count the copies of that agent in the folder; their names and arguments stay on your machine.
 - It reads no token or credential file.
 - It reads the focused session's log (`~/.claude/projects/`, `~/.codex/sessions/`), which holds your conversation. `helpers/session.sh` passes on numbers only. `~/.codex/sessions/**/*.jsonl` is also the fallback for Codex's limits.
-- For OpenCode's session it reads OpenCode's database (`~/.local/share/opencode/opencode.db`) with `sqlite3`, read-only. For Pi it reads Pi's session files (`~/.pi/agent/sessions/`): the focused session's, and those written in the last 8 days for the tokens. Both hold your conversation. Only numbers and a model id leave the helpers. It never runs `pi`.
+- For OpenCode's session it reads OpenCode's database (`$XDG_DATA_HOME/opencode/opencode.db`, by default `~/.local/share/opencode/opencode.db`) with `sqlite3`, read-only. For Pi it reads Pi's session files (`~/.pi/agent/sessions/`): the focused session's, and those written in the last 8 days for the tokens. Both hold your conversation. `helpers/session.sh` and `helpers/pi-spend.sh` pass on only numbers (counts and times) and a model id. It never runs `pi`.
 - It sends no prompt and starts no turn, so it uses no model time.
 - It changes no Claude Code, Codex, OpenCode or Pi settings.
 
