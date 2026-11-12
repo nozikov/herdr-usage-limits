@@ -226,3 +226,130 @@ test("pi session, one process: two candidates and neither started with it → no
   const r = runSession("pi", "4242", piEnv(h));
   assert.deepEqual([r.status, r.stdout], [1, ""]);
 });
+
+// ---- session.sh opencode ----
+
+const HAS_SQLITE = spawnSync("sqlite3", ["-version"], { stdio: "ignore" }).status === 0;
+const sqliteTest = (name, fn) => test(name, HAS_SQLITE ? {} : { skip: "sqlite3 not installed" }, fn);
+
+const OC_START = 1793613600; // 2026-11-02T10:00:00Z, the process start
+const ocTokens = (input, output = 0) => ({ input, output, reasoning: 0, cache: { read: 0, write: 0 } });
+const sq = (v) => (v === null ? "NULL" : typeof v === "number" ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
+
+// sessions: [{ id, parent, dir, updated (s), model, rows: [[type, data]] }]
+function ocDb(sessions) {
+  const file = join(mkdtempSync(join(tmpdir(), "ul-oc-")), "opencode.db");
+  let sql = "create table session_v2 (id text primary key, parent_id text, directory text not null, model text, time_created integer not null, time_updated integer not null);\n"
+    + "create table session_message (id text primary key, session_id text not null, type text not null, seq integer not null, data text not null);\n";
+  for (const s of sessions) {
+    const t = (s.updated ?? OC_START + 60) * 1000;
+    sql += `insert into session_v2 values (${sq(s.id)}, ${sq(s.parent ?? null)}, ${sq(s.dir ?? "/home/demo/project")}, ${sq(JSON.stringify({ id: s.model ?? "demo-model", providerID: "workspace" }))}, ${t - 30000}, ${t});\n`;
+    (s.rows ?? []).forEach(([type, data], i) => {
+      sql += `insert into session_message values (${sq(`${s.id}-${i}`)}, ${sq(s.id)}, ${sq(type)}, ${i + 1}, ${sq(JSON.stringify(data))});\n`;
+    });
+  }
+  const r = spawnSync("sqlite3", [file], { input: sql, encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+  return file;
+}
+
+const OC_ROWS = [
+  ["user", {}], ["assistant", { tokens: ocTokens(9000, 12) }],
+  ["user", {}], ["assistant", { tokens: ocTokens(17456, 37) }],
+  ["user", {}],
+];
+const OC_OWN = { id: "ses_own", rows: OC_ROWS };
+const OC_CHILD = { id: "ses_child", parent: "ses_own", updated: OC_START + 300, rows: [["user", {}], ["assistant", { tokens: ocTokens(99000, 500) }]] };
+const OC_ELSEWHERE = { id: "ses_else", dir: "/home/demo/elsewhere", updated: OC_START + 400, rows: [["user", {}], ["assistant", { tokens: ocTokens(88000, 400) }]] };
+
+const ocEnv = (db, extra = {}) => ({ HERDR_USAGE_OPENCODE_DB: db, HERDR_USAGE_PROC_CWD: "/home/demo/project",
+  HERDR_USAGE_PROC_START: String(OC_START), HERDR_USAGE_PROC_PEERS: "1", ...extra });
+
+sqliteTest("opencode session: newest reply's context, the person's messages, the model", () => {
+  assert.equal(runSession("opencode", "4242", ocEnv(ocDb([OC_OWN]))).stdout, "tokens=17493 calls=3 compactions=0 model=demo-model\n");
+});
+
+sqliteTest("opencode session: a subagent's session and another folder's are never picked", () => {
+  assert.equal(runSession("opencode", "4242", ocEnv(ocDb([OC_OWN, OC_CHILD, OC_ELSEWHERE]))).stdout, "tokens=17493 calls=3 compactions=0 model=demo-model\n");
+});
+
+sqliteTest("opencode session: a reply still being written (no tokens yet) leaves the last context", () => {
+  const db = ocDb([{ id: "ses_own", rows: [...OC_ROWS, ["assistant", { tokens: ocTokens(0) }]] }]);
+  assert.equal(runSession("opencode", "4242", ocEnv(db)).stdout, "tokens=17493 calls=3 compactions=0 model=demo-model\n");
+});
+
+sqliteTest("opencode session: updated before the process started → nothing", () => {
+  const r = runSession("opencode", "4242", ocEnv(ocDb([{ ...OC_OWN, updated: OC_START - 600 }])));
+  assert.deepEqual([r.status, r.stdout], [1, ""]);
+});
+
+sqliteTest("opencode session: two candidates and one client → nothing, not the newest", () => {
+  const r = runSession("opencode", "4242", ocEnv(ocDb([OC_OWN, { id: "ses_other", updated: OC_START + 120, rows: OC_ROWS }])));
+  assert.deepEqual([r.status, r.stdout], [1, ""]);
+});
+
+sqliteTest("opencode session: two clients in one folder → nothing", () => {
+  const r = runSession("opencode", "4242", ocEnv(ocDb([OC_OWN]), { HERDR_USAGE_PROC_PEERS: "2" }));
+  assert.deepEqual([r.status, r.stdout], [1, ""]);
+});
+
+sqliteTest("opencode session: a folder name with a quote is matched, not broken", () => {
+  const dir = "/home/demo/it's a project";
+  const db = ocDb([{ ...OC_OWN, dir }, { id: "ses_x", dir: "/home/demo/it", updated: OC_START + 100, rows: OC_ROWS }]);
+  assert.equal(runSession("opencode", "4242", ocEnv(db, { HERDR_USAGE_PROC_CWD: dir })).stdout, "tokens=17493 calls=3 compactions=0 model=demo-model\n");
+});
+
+sqliteTest("opencode session: a model id with other characters is dropped, numbers stay", () => {
+  const db = ocDb([{ ...OC_OWN, model: "bad id|x;rm" }]);
+  assert.equal(runSession("opencode", "4242", ocEnv(db)).stdout, "tokens=17493 calls=3 compactions=0\n");
+});
+
+sqliteTest("opencode session: no sqlite3, or no database → exit 1, no output", () => {
+  const db = ocDb([OC_OWN]);
+  const a = runSession("opencode", "4242", ocEnv(db, { HERDR_USAGE_SQLITE_BIN: "/nonexistent/sqlite3" }));
+  assert.deepEqual([a.status, a.stdout], [1, ""]);
+  const b = runSession("opencode", "4242", ocEnv(join(tmpdir(), "ul-no-such-dir", "opencode.db")));
+  assert.deepEqual([b.status, b.stdout], [1, ""]);
+});
+
+// Peers looked up for real (through fake ps and lsof): the background service isn't a client.
+function ocProcs(procs) { // { pid: [comm, args] }, all in /home/demo/project
+  const dir = mkdtempSync(join(tmpdir(), "ul-bin-"));
+  const tool = (name, body) => writeFileSync(join(dir, name), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+  const list = Object.entries(procs).map(([p, [c]]) => `${p} ${c}`).join("\\n");
+  const one = Object.entries(procs).map(([p, [c, a]]) =>
+    `  ${p}) [ "$2" = "comm=" ] && echo '${c}' || echo '${a}' ;;`).join("\n");
+  tool("ps", `if [ "$1" = -A ]; then printf '${list}\\n'; exit 0; fi\ncase "$4" in\n${one}\n  *) exit 1 ;;\nesac`);
+  tool("lsof", 'printf "p%s\\nn/home/demo/project\\n" "$6"');
+  return dir;
+}
+const ocPeersEnv = (db, procs) => {
+  const env = ocEnv(db, { PATH: `${ocProcs(procs)}:${process.env.PATH}` });
+  delete env.HERDR_USAGE_PROC_PEERS;
+  return env;
+};
+
+sqliteTest("opencode session: the background service in the same folder is not counted as a client", () => {
+  const procs = { 4242: ["opencode", "opencode"], 4300: ["opencode", "/usr/local/bin/opencode serve --service"] };
+  assert.equal(runSession("opencode", "4242", ocPeersEnv(ocDb([OC_OWN]), procs)).stdout, "tokens=17493 calls=3 compactions=0 model=demo-model\n");
+});
+
+sqliteTest("opencode session: a second terminal client in the folder → nothing", () => {
+  const procs = { 4242: ["opencode", "opencode"], 4300: ["opencode", "opencode serve --service"], 4301: ["/usr/local/bin/opencode", "/usr/local/bin/opencode -c"] };
+  const r = runSession("opencode", "4242", ocPeersEnv(ocDb([OC_OWN]), procs));
+  assert.deepEqual([r.status, r.stdout], [1, ""]);
+});
+
+// OpenCode 2.2.5 writes a compaction as a session_message of type "compaction" whose
+// tokens are the summarising call's, not the context after it.
+const OC_COMPACTED = [...OC_ROWS, ["compaction", { status: "completed", reason: "manual", tokens: ocTokens(18084, 181) }]];
+
+sqliteTest("opencode session: right after a compaction the old context isn't shown", () => {
+  const r = runSession("opencode", "4242", ocEnv(ocDb([{ id: "ses_own", rows: OC_COMPACTED }])));
+  assert.deepEqual([r.status, r.stdout], [1, ""]);
+});
+
+sqliteTest("opencode session: compactions are counted, the reply after the last one is the context", () => {
+  const rows = [...OC_COMPACTED, ["user", {}], ["assistant", { tokens: ocTokens(2100, 40) }], ["compaction", { status: "failed", tokens: ocTokens(5) }]];
+  assert.equal(runSession("opencode", "4242", ocEnv(ocDb([{ id: "ses_own", rows }]))).stdout, "tokens=2140 calls=4 compactions=1 model=demo-model\n");
+});

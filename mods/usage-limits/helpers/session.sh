@@ -2,9 +2,9 @@
 # Prints one line of numbers about the session a process is running, and exits:
 #   claude: tokens=N calls=N compactions=N [lastTrigger=auto lastPre=N lastPost=N]
 #   codex:  tokens=N window=N calls=N
-#   pi:     tokens=N calls=N [model=<id>]
+#   opencode, pi: tokens=N calls=N [model=<id>]
 #
-# Usage: session.sh claude|codex|pi <pid of the agent in the terminal>
+# Usage: session.sh claude|codex|opencode|pi <pid of the agent in the terminal>
 #
 # Session files hold the whole conversation. Only numbers leave this script.
 # Text in them is JSON-escaped, so \"type\" can't match the "type" looked for here.
@@ -13,6 +13,8 @@
 # Exit: 0 = printed, 1 = no session found for that process (never a guess).
 # Claude's files follow CLAUDE_CONFIG_DIR, then %USERPROFILE%\.claude, then ~/.claude.
 # Pi's follow HERDR_USAGE_PI_HOME, then ~/.pi. A model id leaves only if it is [A-Za-z0-9._:/-]+.
+# OpenCode's database: HERDR_USAGE_OPENCODE_DB, then $XDG_DATA_HOME or ~/.local/share
+# /opencode/opencode.db, read with HERDR_USAGE_SQLITE_BIN or sqlite3 (none: exit 1).
 # Tests replace what is looked up about the process: HERDR_USAGE_PROC_CWD, HERDR_USAGE_PROC_START
 # (epoch s) and HERDR_USAGE_PROC_PEERS (agents of that name in that directory, itself included).
 
@@ -125,12 +127,19 @@ proc_start() {
 }
 
 # Processes with the command name of $1 whose working directory is $2, $1 included.
-# By name, not arguments: "pi" and "pi --model x" in one folder are still two.
+# By name, not arguments: "pi" and "pi --model x" in one folder are still two. The name's
+# last part only: macOS gives the full path when a program was started by its path.
+# $3, if given, is a word: a process whose first argument after the command is that word
+# isn't counted (OpenCode's background "opencode serve --service" is no terminal client).
 proc_peers() {
   name=$(ps -o comm= -p "$1" 2>/dev/null)
   [ -n "$name" ] || return
+  name=${name##*/}
   n=0
-  for p in $(ps -A -o pid=,comm= 2>/dev/null | awk -v c="$name" '{ pid = $1; sub(/^ *[0-9]+ /, ""); if ($0 == c) print pid }'); do
+  for p in $(ps -A -o pid=,comm= 2>/dev/null | awk -v c="$name" '{ pid = $1; sub(/^ *[0-9]+ /, ""); sub(/.*\//, ""); if ($0 == c) print pid }'); do
+    if [ -n "$3" ]; then
+      ps -o args= -p "$p" 2>/dev/null | awk -v w="$3" '{ exit !($2 == w) }' && continue
+    fi
     [ "$(proc_cwd "$p")" = "$2" ] && n=$((n + 1))
   done
   printf '%s' "$n"
@@ -218,9 +227,65 @@ pi() {
     }' "$file"
 }
 
+# OpenCode keeps sessions in SQLite, written as it goes (WAL), read here read-only.
+# Candidates: top-level sessions (not a subagent's) of the process's directory updated
+# since it started. Shown only with one terminal client there and exactly one candidate:
+# after /new, or another client that came and went, there are two, and nothing is shown.
+opencode() {
+  cwd=${HERDR_USAGE_PROC_CWD:-$(proc_cwd "$pid")}
+  start=${HERDR_USAGE_PROC_START:-$(proc_start "$pid")}
+  peers=${HERDR_USAGE_PROC_PEERS:-$(proc_peers "$pid" "$cwd" serve)}
+  case "$cwd" in /*) ;; *) exit 1 ;; esac
+  case "$start" in '' | *[!0-9]*) exit 1 ;; esac
+  [ "$peers" = 1 ] || exit 1
+  db=${HERDR_USAGE_OPENCODE_DB:-${XDG_DATA_HOME:-$HOME/.local/share}/opencode/opencode.db}
+  bin=${HERDR_USAGE_SQLITE_BIN:-sqlite3}
+  command -v "$bin" >/dev/null 2>&1 || exit 1
+  [ -f "$db" ] || exit 1
+  # The directory as an SQL literal: every ' doubled.
+  q=$(printf '%s' "$cwd" | sed "s/'/''/g")
+  # Context: the newest reply with tokens (one being written has none yet), all of them
+  # counted, as OpenCode's sidebar does. Calls: the person's messages. A finished
+  # compaction is a "compaction" row; its tokens are the summarising call's, and the
+  # context before it is gone: none until the next reply (OpenCode's screen shows none).
+  row=$("$bin" -readonly -batch -cmd '.timeout 2000' "$db" "
+    with c as (
+      select id, model from session_v2
+      where parent_id is null and directory = '$q' and time_updated >= ${start}000
+    ),
+    s as (select * from c where (select count(*) from c) = 1),
+    k as (
+      select seq from session_message where session_id = (select id from s) and type = 'compaction'
+        and json_extract(data, '\$.status') = 'completed'
+    ),
+    r as (
+      select coalesce(json_extract(data, '\$.tokens.input'), 0) + coalesce(json_extract(data, '\$.tokens.output'), 0)
+        + coalesce(json_extract(data, '\$.tokens.reasoning'), 0) + coalesce(json_extract(data, '\$.tokens.cache.read'), 0)
+        + coalesce(json_extract(data, '\$.tokens.cache.write'), 0) as n, seq
+      from session_message where session_id = (select id from s) and type = 'assistant'
+    )
+    select cast((select n from r where n > 0 and seq > coalesce((select max(seq) from k), 0)
+        order by seq desc limit 1) as integer),
+      (select count(*) from session_message where session_id = (select id from s) and type = 'user'),
+      (select count(*) from k),
+      replace(replace(coalesce(json_extract(model, '\$.id'), ''), char(10), ' '), char(13), ' ')
+    from s;" </dev/null 2>/dev/null) || exit 1
+  IFS='|' read -r tokens calls compactions model <<EOF
+$row
+EOF
+  case "$tokens" in '' | *[!0-9]* | 0) exit 1 ;; esac
+  case "$calls" in '' | *[!0-9]*) exit 1 ;; esac
+  case "$compactions" in '' | *[!0-9]*) exit 1 ;; esac
+  case "$model" in '' | *[!A-Za-z0-9._:/-]*) model= ;; esac
+  printf 'tokens=%d calls=%d compactions=%d' "$tokens" "$calls" "$compactions"
+  [ -n "$model" ] && printf ' model=%s' "$model"
+  printf '\n'
+}
+
 case "$app" in
   claude) claude ;;
   codex) codex ;;
+  opencode) opencode ;;
   pi) pi ;;
   *) exit 1 ;;
 esac
