@@ -148,9 +148,11 @@ pi() {
   # Pi's folder: the directory without its leading /, each / \ : as -, wrapped in --.
   dir=${HERDR_USAGE_PI_HOME:-$HOME/.pi}/agent/sessions/--$(printf '%s' "${cwd#/}" | tr '/\\:' '---')--
   [ -d "$dir" ] || exit 1
-  # Candidates: started or written since the process started. With one such process in
-  # the folder, its session is the one written last. With several, only the session that
-  # started within 2 s of it (the file name's timestamp is when Pi started), else none.
+  # Candidates: started or written since the process started. Its own session started
+  # within 2 s of it (the file name's timestamp is when Pi started). With several such
+  # processes in the folder, only that one counts. With one, that one too, unless another
+  # candidate was written after it (another Pi came and went); and if none started then
+  # (a resumed session), the only candidate. Anything else: nothing.
   file=$(for f in "$dir"/*.jsonl; do
     [ -f "$f" ] && printf '%s %s\n' "$(mtime "$f")" "$f"
   done | awk -v start="$start" -v peers="$peers" '
@@ -164,10 +166,14 @@ pi() {
       if (b ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]-[0-9][0-9]-[0-9][0-9]/)
         t = days(substr(b, 1, 4) + 0, substr(b, 6, 2) + 0, substr(b, 9, 2) + 0) * 86400 + substr(b, 12, 2) * 3600 + substr(b, 15, 2) * 60 + substr(b, 18, 2)
       if (t < start - 2 && m < start) next
-      if (peers == 1) { if (best == "" || m > bm) { best = f; bm = m } }
-      else if (t >= start - 2 && t <= start + 2) { best = f; hits++ }
+      n++; any = f
+      if (t >= start - 2 && t <= start + 2) { own = f; om = m; hits++ }
+      else if (m > other) other = m
     }
-    END { if (best != "" && (peers == 1 || hits == 1)) print best }')
+    END {
+      if (hits == 1 && (peers > 1 || other <= om)) print own
+      else if (!hits && peers == 1 && n == 1) print any
+    }')
   [ -n "$file" ] || exit 1
   # A message's role comes before its content, so the first "role" on a line is the
   # message's. The reply's "model" and "usage" come after the content, so the last ones

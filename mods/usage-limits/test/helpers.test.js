@@ -195,3 +195,34 @@ test("pi session: no folder for that directory → exit 1", () => {
   const r = runSession("pi", "4242", piEnv(home, { HERDR_USAGE_PROC_CWD: "/home/demo/elsewhere" }));
   assert.deepEqual([r.status, r.stdout], [1, ""]);
 });
+
+// One Pi in the folder, but files of others that came and went: only a certain match.
+function piHomeTimed(files) { // { name: [text, mtime] }
+  const h = piHome(Object.fromEntries(Object.entries(files).map(([n, [text]]) => [n, text])));
+  const dir = join(h, ".pi", "agent", "sessions", "--home-demo-project--");
+  for (const [n, [, m]] of Object.entries(files)) utimesSync(join(dir, n), m, m);
+  return h;
+}
+const START = 1793613600; // 2026-11-02T10:00:00Z
+
+test("pi session, one process: its own session is shown while an older-written other exists", () => {
+  const h = piHomeTimed({ "2026-11-02T10-00-00-000Z_own.jsonl": [piReply(500), START + 200], "2026-11-02T09-00-00-000Z_old.jsonl": [piReply(900), START + 100] });
+  assert.equal(runSession("pi", "4242", piEnv(h)).stdout, "tokens=500 calls=0 model=demo-model\n");
+});
+
+test("pi session, one process: another Pi wrote after it → nothing, not the other's numbers", () => {
+  const h = piHomeTimed({ "2026-11-02T10-00-00-000Z_own.jsonl": [piReply(500), START + 100], "2026-11-02T10-03-00-000Z_b.jsonl": [piReply(900), START + 300] });
+  const r = runSession("pi", "4242", piEnv(h));
+  assert.deepEqual([r.status, r.stdout], [1, ""]);
+});
+
+test("pi session, one process: a resumed session is shown when it is the only candidate", () => {
+  const h = piHomeTimed({ "2026-11-01T08-00-00-000Z_resumed.jsonl": [piReply(600), START + 50], "2026-10-30T08-00-00-000Z_stale.jsonl": [piReply(900), START - 9000] });
+  assert.equal(runSession("pi", "4242", piEnv(h)).stdout, "tokens=600 calls=0 model=demo-model\n");
+});
+
+test("pi session, one process: two candidates and neither started with it → nothing", () => {
+  const h = piHomeTimed({ "2026-11-01T08-00-00-000Z_a.jsonl": [piReply(600), START + 50], "2026-11-01T09-00-00-000Z_b.jsonl": [piReply(900), START + 80] });
+  const r = runSession("pi", "4242", piEnv(h));
+  assert.deepEqual([r.status, r.stdout], [1, ""]);
+});
