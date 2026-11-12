@@ -7,8 +7,8 @@ import { View, div, image, svg } from "gpui-kit";
 import { HoverCard, h_flex, v_flex } from "gpui-base";
 import { exec, focused, theme, props, shared, setShared, appHome } from "herdr";
 import { PROVIDERS } from "./providers/index.js";
-import { barModel, cardModel, chooseDensity, panelOnEnter, wanted } from "./lib/view.js";
-import { effectivePrefs, inPanel, isOnBar, isShown, toggleFolded, toggleOnBar, toggleProvider, toggleShowBars, toggleShowResetTime, toggleWindow } from "./lib/prefs.js";
+import { barModel, cardModel, chooseDensity, hasLimits, limitsSettled, panelOnEnter, wanted } from "./lib/view.js";
+import { effectivePrefs, inPanel, isOnBar, isShown, spendOnBar, toggleFolded, toggleOnBar, togglePanel, toggleProvider, toggleShowBars, toggleShowResetTime, toggleSpendOnBar, toggleWindow } from "./lib/prefs.js";
 import { parseSession, sessionOnBar, sessionView } from "./lib/session.js";
 import { nextState } from "./lib/state.js";
 import { errorReport } from "./lib/report.js";
@@ -30,6 +30,7 @@ const SESSION_BAR_W = 60;
 const LEFT_W = 48;                   // the time-left column in the panel
 const PCT_W = 36;                    // the percent column in the panel
 const FOLDED_BAR_W = 44;
+const PANEL_BOX_W = 40;             // the settings' right-hand column, under "Panel"
 const PANEL_OPEN_DELAY = 350;       // ms, so passing over the bar doesn't flash it
 const PANEL_CLOSE_DELAY = 300;      // ms, lets the pointer cross from the bar to the card
 
@@ -257,7 +258,7 @@ export default class UsageLimits extends View {
   cardGroup(g, arrows, t) {
     const id = g.providerId;
     const folded = g.folded;
-    const head = h_flex().id(`ul-head-${id}`).gap(6).items_center()
+    const head = h_flex().id(`ul-head-${id}`).gap(6).items_center().cursor_pointer()
       .on_hover((on, cx) => { this.hovered = on ? id : this.hovered === id ? null : this.hovered; cx.notify(); })
       .on_click((_e, cx) => { setShared(KEY_PREFS, toggleFolded(this.prefs(), id)); cx.notify(); })
       .child(image(g.icon).size(13))
@@ -266,6 +267,7 @@ export default class UsageLimits extends View {
       .when(folded || arrows || this.hovered === id, (e) => e.child(svg(`mods/${MOD}/icons/${folded ? "chevron-right" : "chevron-down"}.svg`).size(12).text_color(t.dim)));
     const s = folded ? g.summary : null;
     if (!s) {
+      if (folded && g.failed) return v_flex().gap(8).child(head.child(this.failure(g.status, t)));
       head.child(div().flex_1())
         .child(div().min_w(0).truncate().text_size(11).text_color(g.failed ? levelColor("hot", t) : t.dim).child(g.status));
       if (folded) return v_flex().gap(8).child(head);
@@ -281,14 +283,19 @@ export default class UsageLimits extends View {
       .child(div().w(PCT_W).flex_none().flex().justify_end().whitespace_nowrap().opacity(numbers).text_color(limitColor(s.level, s.percent, t)).child(s.percent))
       .child(div().w(LEFT_W).flex_none().flex().justify_end().whitespace_nowrap().opacity(numbers).text_size(11).text_color(t.dim).child(s.left));
     return v_flex().gap(8).child(head
-      .child(this.rightLabel(g.failed ? g.status : s.long, g.failed, t))
+      .child(g.failed ? this.failure(g.status, t) : this.rightLabel(s.long, t))
       .child(tail));
   }
 
-  // The flexible gap with a dim label at its right end (red when it is a failure's reason).
-  rightLabel(text, failed, t) {
+  // A one-line group's failure: its reason, flagged, where the flexible gap starts.
+  failure(text, t) {
+    return div().flex_1().min_w(0).truncate().text_size(11).text_color(levelColor("hot", t)).child(`! ${text}`);
+  }
+
+  // The flexible gap with a dim label at its right end.
+  rightLabel(text, t) {
     return div().flex_1().min_w(0).flex().justify_end()
-      .child(div().min_w(0).truncate().text_size(11).text_color(failed ? levelColor("hot", t) : t.dim).child(text));
+      .child(div().min_w(0).truncate().text_size(11).text_color(t.dim).child(text));
   }
 
   // A provider that only counts tokens: one line on the columns of a limit row.
@@ -297,7 +304,7 @@ export default class UsageLimits extends View {
     return h_flex().gap(6).items_center().opacity(g.dim && !g.failed ? 0.55 : 1)
       .child(image(g.icon).size(13))
       .child(div().flex_none().font_semibold().child(g.name))
-      .child(this.rightLabel(g.failed ? g.status : "Tokens today / 7d", g.failed, t))
+      .child(g.failed ? this.failure(g.status, t) : this.rightLabel("Tokens today / 7d", t))
       .child(h_flex().gap(8).items_center().flex_none()
         .child(div().w(PCT_W).flex_none().flex().justify_end().whitespace_nowrap().opacity(numbers).text_color(g.today == null ? t.dim : t.foreground).child(g.today ?? "—"))
         .child(div().w(LEFT_W).flex_none().flex().justify_end().whitespace_nowrap().opacity(numbers).text_color(g.week == null ? t.dim : t.muted).child(g.week ?? "—")));
@@ -323,7 +330,11 @@ export default class UsageLimits extends View {
   shell(t) {
     return v_flex().id("ul-panel-body").w(PANEL_W).p(12).gap(10).rounded(8).border(1).border_color(t.border).bg(t.popover).shadow_lg()
       .text_size(12).text_color(t.foreground)
-      .on_hover((on, cx) => this.hover(on, cx));
+      .on_hover((on, cx) => {
+        // Leaving the panel leaves every header in it, whether or not a header said so.
+        if (!on && this.hovered != null) { this.hovered = null; cx.notify(); }
+        this.hover(on, cx);
+      });
   }
 
   // session: the session block's view, or null when there's none or it's out of the panel.
@@ -344,38 +355,76 @@ export default class UsageLimits extends View {
 
   // ---------- panel: settings ----------
 
-  check(id, on, label, onToggle, t, indent = 0, extra = null) {
-    return h_flex().id(id).gap(8).items_center().pl(indent).py(3).rounded(4).cursor_pointer()
+  checkBox(on, t) {
+    return div().size(13).rounded(3).border(1).border_color(on ? t.accent : t.input).bg(on ? t.accent : t.popover)
+      .flex().items_center().justify_center().text_size(9).text_color(t.accent_foreground).child(on ? "✓" : "");
+  }
+
+  // A row with a box: a click anywhere on it toggles the box. panel: { on, onToggle } adds a
+  // second box at the right end, under "Panel". The bar part and the panel box are then
+  // siblings, neither inside the other, so a click reaches exactly one of the two handlers.
+  check(id, on, label, onToggle, t, indent = 0, extra = null, panel = null) {
+    if (panel == null) {
+      return h_flex().id(id).gap(8).items_center().pl(indent).py(3).rounded(4).cursor_pointer()
+        .hover((s) => s.bg(t.hover))
+        .on_click((_e, cx) => { onToggle(); cx.notify(); })
+        .child(this.checkBox(on, t))
+        .children(label)
+        .when(extra != null, (e) => e.child(div().text_color(t.dim).truncate().child(extra)));
+    }
+    return h_flex().id(id).items_center().pl(indent).py(3).rounded(4)
       .hover((s) => s.bg(t.hover))
+      .child(h_flex().id(`${id}-bar`).flex_1().min_w(0).gap(8).items_center().cursor_pointer()
+        .on_click((_e, cx) => { onToggle(); cx.notify(); })
+        .child(this.checkBox(on, t))
+        .children(label)
+        .when(extra != null, (e) => e.child(div().text_color(t.dim).truncate().child(extra))))
+      .child(this.panelBox(`${id}-panel`, panel.on, panel.onToggle, t));
+  }
+
+  // The right-hand box: whether this shows in the panel. Its whole slot is the target.
+  panelBox(id, on, onToggle, t) {
+    return div().id(id).w(PANEL_BOX_W).flex_none().flex().justify_end().cursor_pointer()
       .on_click((_e, cx) => { onToggle(); cx.notify(); })
-      .child(div().size(13).rounded(3).border(1).border_color(on ? t.accent : t.input).bg(on ? t.accent : t.popover)
-        .flex().items_center().justify_center().text_size(9).text_color(t.accent_foreground).child(on ? "✓" : ""))
-      .children(label)
-      .when(extra != null, (e) => e.child(div().text_color(t.dim).truncate().child(extra)));
+      .child(this.checkBox(on, t));
   }
 
   settings(canGoBack, t) {
     const prefs = this.prefs();
     const st = states();
     const save = (p) => setShared(KEY_PREFS, p);
+    const inThePanel = (id) => ({ on: inPanel(prefs, id), onToggle: () => save(togglePanel(this.prefs(), id)) });
+    // A spend provider's bar box: its explicit choice, else on only when no limits provider answers with limits.
+    const spendBar = (pr, s, id) => spendOnBar(pr, id, limitsSettled(s, pr) && !hasLimits(s));
     const rows = [];
     for (const p of PROVIDERS) {
       const s = st[p.id] ?? {};
+      const shownReading = s.report?.status === "ok" ? s.report : s.lastGood;
+      if (p.kind === "spend") {
+        const missing = s.installed === false;
+        const idle = !missing && shownReading?.spend?.week === 0;
+        const reason = missing ? "not installed" : idle ? "no use in 7 days" : s.report && s.report.status !== "ok" ? s.report.message : null;
+        rows.push(this.check(`p-${p.id}`, spendBar(prefs, st, p.id), [image(p.icon).size(13), div().text_color(missing || idle ? t.dim : t.foreground).child(p.name)],
+          () => { const fresh = this.prefs(); save(toggleSpendOnBar(fresh, p.id, spendBar(fresh, states(), p.id))); }, t, 0, reason, inThePanel(p.id)));
+        continue;
+      }
       const on = isShown(prefs, p.id);
       const reason = s.installed === false ? "not installed" : s.report && s.report.status !== "ok" ? s.report.message : null;
       rows.push(this.check(`p-${p.id}`, on, [image(p.icon).size(13), div().text_color(s.installed === false ? t.dim : t.foreground).child(p.name)],
-        () => save(toggleProvider(this.prefs(), p.id)), t, 0, reason));
-      const windows = (s.report?.status === "ok" ? s.report : s.lastGood)?.windows ?? [];
+        () => save(toggleProvider(this.prefs(), p.id)), t, 0, reason, inThePanel(p.id)));
+      const windows = shownReading?.windows ?? [];
       for (const w of windows) {
         rows.push(this.check(`w-${p.id}-${w.id}`, on && isShown(prefs, p.id, w.id), [div().text_color(on ? t.muted : t.dim).child(w.long)],
           () => save(toggleWindow(this.prefs(), p.id, w.id)), t, 21));
       }
     }
+    const session = inThePanel("session");
     return this.shell(t)
       .child(h_flex().gap(6).items_center().h(24)
         .when(canGoBack, (e) => e.child(this.iconButton("ul-back", "back", "Back to limits", true, (cx) => this.show("limits", cx), t)))
         .child(div().font_semibold().child("Settings")))
-      .child(div().text_size(11).text_color(t.dim).child("What the bar shows. This panel always shows everything."))
+      .child(h_flex().items_center().text_size(11).text_color(t.dim)
+        .child(div().child("Bar")).child(div().flex_1()).child(div().child("Panel")))
       .child(v_flex().gap(1).children(rows))
       .child(div().h(1).bg(t.border).flex_none())
       .child(this.check("opt-reset-time", prefs.showResetTime, [div().text_color(t.foreground).child("Always show time to reset")],
@@ -384,13 +433,15 @@ export default class UsageLimits extends View {
         () => save(toggleShowBars(this.prefs())), t))
       .child(div().h(1).bg(t.border).flex_none())
       .child(v_flex().gap(1)
-        .child(div().font_semibold().pb(3).child("This session"))
+        .child(h_flex().items_center().pb(3)
+          .child(div().flex_1().font_semibold().child("This session"))
+          .child(this.panelBox("panel-session", session.on, session.onToggle, t)))
         .children(["Context", "Calls", "Compactions"].map((name) => {
           const row = name.toLowerCase();
           return this.check(`s-${row}`, isOnBar(prefs, row), [div().text_color(t.foreground).child(name)],
             () => save(toggleOnBar(this.prefs(), row)), t);
         })))
-      .child(div().text_size(10.5).text_color(t.dim).child("Data: claude and codex CLIs, numbers from session logs."));
+      .child(div().text_size(10.5).text_color(t.dim).child("Data: claude, codex, opencode and pi, numbers from their session logs."));
   }
 
   render(cx) {
