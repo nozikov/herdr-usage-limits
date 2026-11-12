@@ -1,8 +1,9 @@
 #!/bin/sh
 # Prints one line of numbers about the session a process is running, and exits:
-#   claude: tokens=N calls=N compactions=N [lastTrigger=auto lastPre=N lastPost=N]
-#   codex:  tokens=N window=N calls=N
-#   opencode, pi: tokens=N calls=N [model=<id>]
+#   claude:   tokens=N calls=N compactions=N [lastTrigger=auto lastPre=N lastPost=N]
+#   codex:    tokens=N window=N calls=N
+#   opencode: tokens=N calls=N compactions=N [model=<id>]
+#   pi:       tokens=N calls=N [model=<id>]
 #
 # Usage: session.sh claude|codex|opencode|pi <pid of the agent in the terminal>
 #
@@ -27,6 +28,26 @@ NUM='function num(s, k,   p) {
   p = "\"" k "\":[0-9]+"
   if (!match(s, p)) return 0
   return substr(s, RSTART + length(k) + 3, RLENGTH - length(k) - 3) + 0
+}'
+
+# The position of the last "key":<value> on a Pi message line, if it is one of the
+# message's own fields: from its value to the end, the line then closes exactly two
+# objects, the message and the line ({"type":"message",...,"message":{...}}). Inside the
+# content (a tool call's arguments, say) it closes more, and a ] among them: 0.
+# Strings go first (their escapes, then themselves), so no text inside them counts.
+OWN='
+function last(s, k,   i, j) {
+  j = 0
+  while ((i = index(s, k)) > 0) { j += i; s = substr(s, i + 1) }
+  return j
+}
+function own(s, k,   i, t) {
+  i = last(s, k)
+  if (!i) return 0
+  t = substr(s, i + length(k) - 1)
+  gsub(/\\./, "", t); gsub(/"[^"]*"/, "", t); gsub(/[^][{}]/, "", t)
+  while (gsub(/[{][}]|[[][]]/, "", t)) ;
+  return t == "}}" ? i : 0
 }'
 
 claude() {
@@ -108,9 +129,32 @@ codex() {
 # ---- Agents that hold no session file open: the process is tied to its session
 # by its working directory and its start time. ----
 
+# lsof -Fn's name as a printf format: lsof writes a byte it won't print as \xNN (any
+# non-ASCII byte under the C locale) and a backslash as \\; these turn into \ooo and \\,
+# and % into %%. Any other escape (a control character) can't be undone: nothing.
+UNESCAPE='BEGIN { X = "0123456789abcdef" }
+  function pct(x) { gsub(/%/, "%%", x); return x }
+  NR == 1 {
+    s = $0; out = ""
+    while ((i = index(s, "\\")) > 0) {
+      out = out pct(substr(s, 1, i - 1)); c = substr(s, i + 1, 1); h = tolower(substr(s, i + 2, 2))
+      if (c == "\\") { out = out "\\\\"; s = substr(s, i + 2) }
+      else if (c == "x" && h ~ /^[0-9a-f][0-9a-f]$/) {
+        out = out sprintf("\\%03o", 16 * (index(X, substr(h, 1, 1)) - 1) + index(X, substr(h, 2, 1)) - 1)
+        s = substr(s, i + 4)
+      } else exit 1
+    }
+    printf "%s", out pct(s)
+  }'
+
+# The process's working directory, whatever the locale: /proc where there is one, else
+# lsof under the C locale with its escapes undone.
 proc_cwd() {
-  d=$(lsof -w -a -d cwd -p "$1" -Fn 2>/dev/null | sed -n 's/^n//p')
-  [ -n "$d" ] || d=$(readlink "/proc/$1/cwd" 2>/dev/null)
+  d=$(readlink "/proc/$1/cwd" 2>/dev/null)
+  if [ -z "$d" ]; then
+    f=$(LC_ALL=C lsof -w -a -d cwd -p "$1" -Fn 2>/dev/null | sed -n 's/^n//p' | awk "$UNESCAPE") || f=
+    case "$f" in /*) d=$(printf "$f") ;; esac
+  fi
   printf '%s' "$d"
 }
 
@@ -186,35 +230,31 @@ pi() {
     }')
   [ -n "$file" ] || exit 1
   # A message's role comes before its content, so the first "role" on a line is the
-  # message's. The reply's "model" and "usage" come after the content, so the last ones
-  # are the reply's, whatever keys a tool call's arguments hold.
+  # message's. The reply's own "model" and "usage" are among the message's own fields, which
+  # follow its content; a reply without one of its own must not take one from a tool call's
+  # arguments, so a key counts only at the message's own level (see OWN).
   # Compactions aren't counted: none could be made to happen to see how they are written.
   # Pi 1.5.0's source writes a {"type":"compaction"} line; after one, the last reply's
   # context is from before it, so it is dropped until the next reply (Pi's footer too).
-  awk "$NUM"'
+  awk "$NUM$OWN"'
     function role(s,   i) {
       i = index(s, "\"message\":{\"role\":\"")
       if (!i) return ""
       s = substr(s, i + 19)
       return substr(s, 1, index(s, "\"") - 1)
     }
-    function last(s, k,   i, j) {
-      j = 0
-      while ((i = index(s, k)) > 0) { j += i; s = substr(s, i + 1) }
-      return j
-    }
     /^\{"type":"compaction"/ { tokens = 0; model = "" }
     /^\{"type":"message"/ {
       r = role($0)
       if (r == "user") calls++
       if (r != "assistant") next
-      u = last($0, "\"usage\":{")
+      u = own($0, "\"usage\":{")
       if (!u) next
       s = substr($0, u)
       n = num(s, "input") + num(s, "cacheRead") + num(s, "cacheWrite")
       if (n <= 0) next
       tokens = n; model = ""
-      i = last($0, "\"model\":\"")
+      i = own($0, "\"model\":\"")
       if (i) {
         s = substr($0, i + 9); s = substr(s, 1, index(s, "\"") - 1)
         if (s ~ /^[A-Za-z0-9._:\/-]+$/) model = s

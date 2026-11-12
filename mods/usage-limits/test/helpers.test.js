@@ -470,3 +470,105 @@ test("opencode spend helper: CLI that ignores TERM → exit 1 within 20 s and no
   assert.ok(r.ms < 20000, `took ${r.ms} ms`);
   assert.equal(alive("fake-cli/opencode"), false, "stubborn CLI left running");
 });
+
+// ---- final fixes: a reply's own fields, folder names, unreadable files, banners ----
+
+import { chmodSync, existsSync } from "node:fs";
+
+const FORGED = readFileSync(join(HERE, "fixtures", "pi-session-forged.jsonl"), "utf8");
+
+test("pi session: model and usage only from the reply's own fields, never a tool call's arguments", () => {
+  // The first reply has usage of its own and no model; its tool call's arguments name one.
+  // The second has neither; its arguments carry a whole forged api/provider/model/usage.
+  const r = runSession("pi", "4242", piEnv(piHome({ "2026-11-02T10-00-00-000Z_f.jsonl": FORGED })));
+  assert.equal(r.stdout, "tokens=3000 calls=1\n");
+  assert.doesNotMatch(r.stdout, /evil|999999/);
+});
+
+test("pi spend helper: a reply with no usage of its own adds no line, whatever its arguments hold", () => {
+  const r = run("pi-spend.sh", piSessions({ "--home-demo-project--/2026-11-02T10-00-00-000Z_f.jsonl": [FORGED] }));
+  assert.deepEqual([r.status, r.stdout], [0, "2026-11-02T10:00:08.000Z 3020\n"]);
+});
+
+const IS_ROOT = process.getuid?.() === 0;
+
+test("pi spend helper: an unreadable folder or file leaves the readable ones counted, exit 0", IS_ROOT ? { skip: "running as root" } : {}, (t) => {
+  const env = piSessions({
+    "--a--/s1.jsonl": [piSpendReply("2026-11-12T09:00:00.000Z", 300)],
+    "--b--/s2.jsonl": [piSpendReply("2026-11-12T08:00:00.000Z", 200)],
+    "--c--/s3.jsonl": [piSpendReply("2026-11-12T07:00:00.000Z", 100)],
+  });
+  const sessions = join(env.HERDR_USAGE_PI_HOME, "agent", "sessions");
+  const lockedDir = join(sessions, "--b--");
+  const lockedFile = join(sessions, "--c--", "s3.jsonl");
+  chmodSync(lockedDir, 0o000);
+  chmodSync(lockedFile, 0o000);
+  t.after(() => { chmodSync(lockedDir, 0o755); chmodSync(lockedFile, 0o644); });
+  const r = run("pi-spend.sh", env);
+  assert.deepEqual([r.status, r.stdout], [0, "2026-11-12T09:00:00.000Z 300\n"]);
+});
+
+// Pi's folder for a directory: its leading / dropped, each / \ : as -, wrapped in --.
+function piHomeAt(cwd, files) {
+  const home = mkdtempSync(join(tmpdir(), "ul-pi-"));
+  const dir = join(home, ".pi", "agent", "sessions", `--${cwd.slice(1).replace(/[/\\:]/g, "-")}--`);
+  mkdirSync(dir, { recursive: true });
+  for (const [name, text] of Object.entries(files)) writeFileSync(join(dir, name), text);
+  return home;
+}
+
+test("pi session: a folder with a space, and one with a colon, find their sessions", () => {
+  for (const cwd of ["/home/demo/my project", "/home/demo/a:b"]) {
+    const h = piHomeAt(cwd, { "2026-11-02T10-00-00-000Z_x.jsonl": piReply(321) });
+    assert.equal(runSession("pi", "4242", piEnv(h, { HERDR_USAGE_PROC_CWD: cwd })).stdout, "tokens=321 calls=0 model=demo-model\n", cwd);
+  }
+});
+
+sqliteTest("opencode session: a folder with a space, and one with a colon, find their sessions", () => {
+  for (const dir of ["/home/demo/my project", "/home/demo/a:b"]) {
+    const db = ocDb([{ ...OC_OWN, dir }]);
+    assert.equal(runSession("opencode", "4242", ocEnv(db, { HERDR_USAGE_PROC_CWD: dir })).stdout, "tokens=17493 calls=3 compactions=0 model=demo-model\n", dir);
+  }
+});
+
+// The working directory looked up for real, through a fake lsof that prints it as lsof
+// does under the C locale: a byte it won't print as \xNN, a backslash as \\.
+function lsofCwd(printed) {
+  const dir = mkdtempSync(join(tmpdir(), "ul-bin-"));
+  writeFileSync(join(dir, "lsof"), `#!/bin/sh\nprintf 'p%s\\nfcwd\\nn%s\\n' 4242 '${printed}'\n`, { mode: 0o755 });
+  return dir;
+}
+const lsofEnv = (env, printed) => {
+  const e = { ...env, PATH: `${lsofCwd(printed)}:${process.env.PATH}` };
+  delete e.HERDR_USAGE_PROC_CWD;
+  return e;
+};
+const NO_PROC = existsSync("/proc/4242") ? { skip: "/proc/4242 exists here" } : {};
+
+test("pi session: a non-ASCII folder lsof prints as \\xNN escapes is found", NO_PROC, () => {
+  const h = piHomeAt("/home/demo/проект", { "2026-11-02T10-00-00-000Z_x.jsonl": piReply(654) });
+  const printed = "/home/demo/\\xd0\\xbf\\xd1\\x80\\xd0\\xbe\\xd0\\xb5\\xd0\\xba\\xd1\\x82";
+  assert.equal(runSession("pi", "4242", lsofEnv(piEnv(h), printed)).stdout, "tokens=654 calls=0 model=demo-model\n");
+});
+
+sqliteTest("opencode session: a folder with a backslash and a percent sign, as lsof prints them, is found", () => {
+  if (existsSync("/proc/4242")) return;
+  const dir = "/home/demo/a\\b 100%d";
+  const db = ocDb([{ ...OC_OWN, dir }, { ...OC_ELSEWHERE, dir: "/home/demo/a\\\\b 100%d" }]);
+  assert.equal(runSession("opencode", "4242", lsofEnv(ocEnv(db), "/home/demo/a\\\\b 100%d")).stdout, "tokens=17493 calls=3 compactions=0 model=demo-model\n");
+});
+
+test("pi session: an escape lsof uses that can't be undone (a control character) → nothing", NO_PROC, () => {
+  // A folder whose name really is a\nb (backslash, n) must not be taken for it either.
+  const h = piHomeAt("/home/demo/a\\nb", { "2026-11-02T10-00-00-000Z_x.jsonl": piReply(654) });
+  const r = runSession("pi", "4242", lsofEnv(piEnv(h), "/home/demo/a\\nb"));
+  assert.deepEqual([r.status, r.stdout], [1, ""]);
+});
+
+test("opencode spend helper: a banner before the JSON is cut off", () => {
+  const r = run("opencode-spend.sh", { HERDR_USAGE_OPENCODE_BIN: FAKE_OC, FAKE_OPENCODE: "banner" });
+  assert.equal(r.status, 0);
+  const out = JSON.parse(r.stdout);
+  assert.equal(out.today.tokens.input, 17456);
+  assert.equal(out.week.tokens.input, 412300);
+});

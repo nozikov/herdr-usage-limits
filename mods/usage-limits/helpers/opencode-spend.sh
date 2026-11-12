@@ -44,10 +44,11 @@ done
 wait "$p1" || exit 1
 wait "$p2" || exit 1
 
-# The CLI pretty-prints over many lines; JSON strings hold no raw newlines, so
-# joining the lines keeps the object intact.
-today=$(tr -d '\r\n' <"$dir/today")
-week=$(tr -d '\r\n' <"$dir/week")
+# A notice the CLI prints first (an update, a warning) is cut off: each reply starts at
+# its first line that starts with {. The CLI pretty-prints over many lines; JSON strings
+# hold no raw newlines, so joining the lines keeps the object intact.
+today=$(sed -n '/^{/,$p' "$dir/today" | tr -d '\r\n')
+week=$(sed -n '/^{/,$p' "$dir/week" | tr -d '\r\n')
 for v in "$today" "$week"; do
   v=${v#"${v%%[![:space:]]*}"}
   v=${v%"${v##*[![:space:]]}"}

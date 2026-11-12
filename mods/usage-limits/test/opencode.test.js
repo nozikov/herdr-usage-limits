@@ -42,3 +42,25 @@ test("a reply without tokens → error report", () => {
     assert.equal(r.source, "opencode stats");
   }
 });
+
+test("a token field that isn't a number → error report, not zero", () => {
+  const week = fixture("opencode-stats.week.json");
+  const ok = { input: 5, output: 1, reasoning: 0, cache: { read: 0, write: 0 } };
+  const bad = [
+    { ...ok, input: "5" }, { ...ok, output: null }, { ...ok, reasoning: "0" }, { ...ok, input: undefined }, { ...ok, output: Infinity },
+    { ...ok, cache: { read: "1", write: 0 } }, { ...ok, cache: { read: 0, write: [] } }, { ...ok, cache: null }, { ...ok, cache: 3 },
+  ];
+  for (const tokens of [...bad, [], [1, 2], "17493", 17493]) {
+    for (const text of [reply({ tokens }, week), reply(week, { tokens })]) {
+      const r = opencode.parse(text, NOW);
+      assert.equal(r.status, "error", text);
+      assert.equal(r.message, "No stats from OpenCode");
+    }
+  }
+});
+
+test("reasoning and cache may be missing: they count as 0; input and output may not", () => {
+  const r = opencode.parse(reply({ tokens: { input: 7, output: 3 } }, { tokens: { input: 10, output: 2, cache: {} } }), NOW);
+  assert.equal(r.status, "ok");
+  assert.deepEqual(r.spend, { today: 10, week: 12 });
+});

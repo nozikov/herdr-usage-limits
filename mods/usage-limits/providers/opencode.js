@@ -5,13 +5,22 @@ import { spendReport, errorReport } from "../lib/report.js";
 
 const SOURCE = "opencode stats";
 
-const num = (v) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0);
+const isNum = (v) => typeof v === "number" && Number.isFinite(v);
+const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const num = (v) => (v > 0 ? v : 0);
 
-// input + output + reasoning + cache read + cache write; null without a tokens object.
+// input + output + reasoning + cache read + cache write. null when the reply's format isn't
+// the one known, so a change shows as failing rather than as "unused": tokens must be an
+// object with numbers for input and output; reasoning, cache, cache.read and cache.write may
+// be missing (0), and when present must be a number, or for cache an object.
 function total(reply) {
   const t = reply?.tokens;
-  if (!t || typeof t !== "object") return null;
-  return num(t.input) + num(t.output) + num(t.reasoning) + num(t.cache?.read) + num(t.cache?.write);
+  if (!isObj(t) || !isNum(t.input) || !isNum(t.output)) return null;
+  if (t.reasoning !== undefined && !isNum(t.reasoning)) return null;
+  const c = t.cache ?? {};
+  if (t.cache !== undefined && !isObj(t.cache)) return null;
+  if ((c.read !== undefined && !isNum(c.read)) || (c.write !== undefined && !isNum(c.write))) return null;
+  return num(t.input) + num(t.output) + num(t.reasoning) + num(c.read) + num(c.write);
 }
 
 export function parse(text, now) {
