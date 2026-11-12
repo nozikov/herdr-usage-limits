@@ -489,14 +489,18 @@ export default class UsageLimits extends View {
 
   render(cx) {
     const terminal = focused()?.terminal ?? null;
+    const prefs = this.prefs();
+    const sessionWanted = this.sessionWanted(prefs);
     if (terminal !== this.terminal) {
       this.terminal = terminal;
       this.session = null;
       this.readSession(cx);
+    } else if (sessionWanted && !this.sessionWas) {
+      this.readSession(cx); // just put back in the panel or on the bar: read at once
     }
+    this.sessionWas = sessionWanted;
     // A provider just put back on the bar or in the panel is fetched at once.
     const st = states();
-    const prefs = this.prefs();
     const want = PROVIDERS.filter((p) => wanted(prefs, p, st));
     for (const p of want) if (this.unwanted[p.id]) this.fetch(p, cx);
     this.unwanted = Object.fromEntries(PROVIDERS.filter((p) => !want.includes(p)).map((p) => [p.id, true]));
