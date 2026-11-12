@@ -160,8 +160,9 @@ pi() {
   # Candidates: started or written since the process started. Its own session started
   # within 2 s of it (the file name's timestamp is when Pi started). With several such
   # processes in the folder, only that one counts. With one, that one too, unless another
-  # candidate was written after it (another Pi came and went); and if none started then
-  # (a resumed session), the only candidate. Anything else: nothing.
+  # candidate was written after it (another Pi came and went); and if none started then,
+  # the only candidate, if it started before the process (a resumed session: one that
+  # started later is another Pi's, which came and went). Anything else: nothing.
   file=$(for f in "$dir"/*.jsonl; do
     [ -f "$f" ] && printf '%s %s\n' "$(mtime "$f")" "$f"
   done | awk -v start="$start" -v peers="$peers" '
@@ -175,13 +176,13 @@ pi() {
       if (b ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]-[0-9][0-9]-[0-9][0-9]/)
         t = days(substr(b, 1, 4) + 0, substr(b, 6, 2) + 0, substr(b, 9, 2) + 0) * 86400 + substr(b, 12, 2) * 3600 + substr(b, 15, 2) * 60 + substr(b, 18, 2)
       if (t < start - 2 && m < start) next
-      n++; any = f
+      n++; any = f; at = t
       if (t >= start - 2 && t <= start + 2) { own = f; om = m; hits++ }
       else if (m > other) other = m
     }
     END {
       if (hits == 1 && (peers > 1 || other <= om)) print own
-      else if (!hits && peers == 1 && n == 1) print any
+      else if (!hits && peers == 1 && n == 1 && at >= 0 && at < start) print any
     }')
   [ -n "$file" ] || exit 1
   # A message's role comes before its content, so the first "role" on a line is the
@@ -229,8 +230,16 @@ pi() {
 
 # OpenCode keeps sessions in SQLite, written as it goes (WAL), read here read-only.
 # Candidates: top-level sessions (not a subagent's) of the process's directory updated
-# since it started. Shown only with one terminal client there and exactly one candidate:
-# after /new, or another client that came and went, there are two, and nothing is shown.
+# since it started. Shown only with one terminal client there and exactly one candidate.
+# Once this client has written its own row, another writer in the folder (a client that
+# came and went, an `opencode run`, the desktop or web app through the service), or /new
+# here, makes two, and nothing is shown.
+# Known, accepted risk: nothing ties a terminal client to its session (the service
+# serves every client, and neither it nor Herdr reports which session a TUI shows). So
+# while this client has sent nothing since it started (fresh, or `opencode -c` on an old
+# session), a session another short-lived writer wrote in this folder meanwhile is the
+# only candidate and is shown here. It turns into "nothing" at this client's first
+# message, when its own row makes two.
 opencode() {
   cwd=${HERDR_USAGE_PROC_CWD:-$(proc_cwd "$pid")}
   start=${HERDR_USAGE_PROC_START:-$(proc_start "$pid")}

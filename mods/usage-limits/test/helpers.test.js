@@ -353,3 +353,10 @@ sqliteTest("opencode session: compactions are counted, the reply after the last 
   const rows = [...OC_COMPACTED, ["user", {}], ["assistant", { tokens: ocTokens(2100, 40) }], ["compaction", { status: "failed", tokens: ocTokens(5) }]];
   assert.equal(runSession("opencode", "4242", ocEnv(ocDb([{ id: "ses_own", rows }]))).stdout, "tokens=2140 calls=4 compactions=1 model=demo-model\n");
 });
+
+test("pi session, one process: a lone candidate that started after it, not with it → nothing", () => {
+  // a fresh Pi with no file yet; another Pi started 10:03 in the folder, wrote, quit
+  const h = piHomeTimed({ "2026-11-02T10-03-00-000Z_other.jsonl": [piReply(900), START + 300] });
+  const r = runSession("pi", "4242", piEnv(h));
+  assert.deepEqual([r.status, r.stdout], [1, ""]);
+});
