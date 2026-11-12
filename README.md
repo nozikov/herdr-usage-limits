@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/hero.png" width="100%" alt="Always on the bar, everything on hover: the status bar with session numbers and Claude Code and Codex limits, and above it the hover panel with every limit in full">
+  <img src="assets/hero.png" width="100%" alt="Always on the bar, everything on hover: the status bar with session numbers and Claude Code and Codex limits, and above it the hover panel with the session, Claude's limits in full, Codex folded to one line, and OpenCode and Pi with their tokens today and over 7 days">
 </p>
 
 <h1 align="center">Usage limits for Herdr</h1>
@@ -50,7 +50,7 @@ From amber on, you also see the time left until the limit resets.
 ## Hover for everything
 
 <p align="center">
-  <img src="assets/card.png" width="440" alt="The hover panel: the current session's context, calls and compactions, then each provider with its plan and last update and one line per limit with a bar, percent and time to reset, with refresh and settings buttons">
+  <img src="assets/card.png" width="440" alt="The hover panel: an OpenCode session with its model, context, calls and compactions, then Claude and Codex with their plan, last update and one line per limit with a bar, percent and time to reset, then OpenCode and Pi with their tokens today and over 7 days, with refresh and settings buttons">
 </p>
 
 Rest the pointer on the limits. The panel shows every limit and when it resets. Rest it on a
@@ -60,6 +60,10 @@ Click a provider's name to fold it to one line: its tightest limit, with the bar
 and time to reset. Click again to open it. Everything starts open, and a fold is
 remembered. An arrow beside the name shows while the pointer is on it, and always on a
 folded line or when the panel holds three providers or more.
+
+<p align="center">
+  <img src="assets/fold.png" width="440" alt="The same panel with Claude and Codex folded: each on one line with its tightest limit, 5-hour at 92% and 71%, then OpenCode and Pi">
+</p>
 
 OpenCode and Pi get one line each: `Tokens today / 7d`, with both numbers. They don't
 fold. One you haven't used in 7 days isn't shown.
@@ -76,7 +80,7 @@ For OpenCode and Pi the second line also names the agent and the model: `Pi · d
 ## Choose what the bar shows
 
 <p align="center">
-  <img src="assets/settings.png" width="440" alt="The settings side of the panel: a back arrow, a checkbox per provider and per limit, Always show time to reset, Show bars, and checkboxes for the session's context, calls and compactions">
+  <img src="assets/settings.png" width="440" alt="The settings side of the panel: a back arrow, Bar and Panel column headings, for each provider a Bar checkbox on the left and a Panel checkbox on the right, a Bar checkbox per limit, OpenCode and Pi off the bar and in the panel, Always show time to reset, Show bars, and This session with its Panel checkbox and Bar checkboxes for context, calls and compactions">
 </p>
 
 Click ⚙ in the panel. Each provider has two boxes: the left one, under **Bar**, is about
