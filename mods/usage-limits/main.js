@@ -36,6 +36,11 @@ const PANEL_OPEN_DELAY = 350;       // ms, so passing over the bar doesn't flash
 const PANEL_CLOSE_DELAY = 300;      // ms, lets the pointer cross from the bar to the card
 
 const now = () => Math.floor(Date.now() / 1000);
+
+// A provider's icon. A tinted one (a one-color glyph) is drawn in the given color, like text,
+// so it shows on a dark and a light theme alike; any other is the picture as it is.
+const TINTED = new Set(PROVIDERS.filter((p) => p.tint).map((p) => p.id));
+const providerIcon = (id, path, color) => (TINTED.has(id) ? svg(path).size(13).text_color(color) : image(path).size(13));
 const states = () => shared(KEY_STATE) ?? {};
 
 function levelColor(level, t) {
@@ -241,7 +246,7 @@ export default class UsageLimits extends View {
       content.child(
         h_flex().id(`ul-${g.providerId}`).gap(density === 0 ? 10 : 8).items_center().flex_none()
           .opacity(g.dim ? 0.55 : 1)
-          .child(image(g.icon).size(13))
+          .child(providerIcon(g.providerId, g.icon, t.foreground))
           .when(g.mark != null, (e) => e.child(div().text_color(t.dim).child(g.mark)))
           .children(g.segments.map((s) => this.segment(s, density, t)))
           .when(g.spend != null, (e) => e.child(this.spendSegment(g.spend, t))));
@@ -285,7 +290,7 @@ export default class UsageLimits extends View {
         if (next.folded.includes(id)) this.foldedHere.add(id); else this.foldedHere.delete(id);
         cx.notify();
       })
-      .child(image(g.icon).size(13))
+      .child(providerIcon(g.providerId, g.icon, t.foreground))
       .child(div().flex_none().font_semibold().child(g.name))
       .when(g.plan != null, (e) => e.child(div().flex_none().px(5).rounded(4).bg(t.raised).text_size(10).text_color(t.accent).child(g.plan)))
       .when(folded || arrows || this.hovered === id, (e) => e.child(svg(`mods/${MOD}/icons/${folded ? "chevron-right" : "chevron-down"}.svg`).size(12).text_color(t.dim)));
@@ -342,7 +347,7 @@ export default class UsageLimits extends View {
   spendLine(g, t) {
     const numbers = g.failed ? 0.55 : 1;
     return h_flex().gap(6).items_center().opacity(g.dim && !g.failed ? 0.55 : 1)
-      .child(image(g.icon).size(13))
+      .child(providerIcon(g.providerId, g.icon, t.foreground))
       .child(div().flex_none().font_semibold().child(g.name))
       .child(g.failed ? this.failure(g.status, t) : this.rightLabel("Tokens today / 7d", t))
       .child(h_flex().gap(8).items_center().flex_none()
@@ -447,13 +452,13 @@ export default class UsageLimits extends View {
         const missing = s.installed === false;
         const idle = !missing && shownReading?.spend?.week === 0;
         const reason = missing ? "not installed" : idle ? "no use in 7 days" : s.report && s.report.status !== "ok" ? s.report.message : null;
-        rows.push(this.check(`p-${p.id}`, spendBar(prefs, st, p.id), [image(p.icon).size(13), div().text_color(missing || idle ? t.dim : t.foreground).child(p.name)],
+        rows.push(this.check(`p-${p.id}`, spendBar(prefs, st, p.id), [providerIcon(p.id, p.icon, missing || idle ? t.dim : t.foreground), div().text_color(missing || idle ? t.dim : t.foreground).child(p.name)],
           () => { const fresh = this.prefs(); save(toggleSpendOnBar(fresh, p.id, spendBar(fresh, states(), p.id))); }, t, 0, reason, inThePanel(p.id)));
         continue;
       }
       const on = isShown(prefs, p.id);
       const reason = s.installed === false ? "not installed" : s.report && s.report.status !== "ok" ? s.report.message : null;
-      rows.push(this.check(`p-${p.id}`, on, [image(p.icon).size(13), div().text_color(s.installed === false ? t.dim : t.foreground).child(p.name)],
+      rows.push(this.check(`p-${p.id}`, on, [providerIcon(p.id, p.icon, s.installed === false ? t.dim : t.foreground), div().text_color(s.installed === false ? t.dim : t.foreground).child(p.name)],
         () => save(toggleProvider(this.prefs(), p.id)), t, 0, reason, inThePanel(p.id)));
       const windows = shownReading?.windows ?? [];
       for (const w of windows) {

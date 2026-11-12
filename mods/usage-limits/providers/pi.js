@@ -29,6 +29,7 @@ export default {
   name: "Pi",
   icon: "icons/pi.svg",
   kind: "spend",
+  tint: true, // a one-color glyph: drawn in the text color, as Herdr does for its own
   helper: "helpers/pi-spend.sh",
   parse,
 };

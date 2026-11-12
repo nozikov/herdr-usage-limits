@@ -41,6 +41,7 @@ export default {
   name: "OpenCode",
   icon: "icons/opencode.svg",
   kind: "spend",
+  tint: true, // a one-color glyph: drawn in the text color, as Herdr does for its own
   helper: "helpers/opencode-spend.sh",
   parse,
 };
