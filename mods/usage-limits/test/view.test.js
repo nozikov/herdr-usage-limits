@@ -452,3 +452,50 @@ test("density: a spend group takes room", () => {
   assert.equal(chooseDensity(spendAlone, 60), 3, "nothing to drop: it stays at the narrowest");
   assert.equal(chooseDensity(spendAlone, 200), 0);
 });
+
+// ---- the first rule, guarded further ----
+import { extraScenarios, BAR_PREFS, DENSITY_WIDTHS } from "./_view-scenarios.js";
+import { effectivePrefs as livePrefs } from "../lib/prefs.js";
+
+test("card: a Claude + Codex panel shows no arrow, whichever providers are listed", () => {
+  for (const [name, mk] of Object.entries({ ...scenarios, ...extraScenarios })) {
+    for (const providers of [[claude, codex], WITH_SPEND, PROVIDERS]) {
+      assert.equal(cardModel(mk(), SNAP_NOW, providers).arrows, false, `${name}, ${providers.length} providers`);
+    }
+  }
+});
+
+test("card and bar: OpenCode and Pi not installed (the state after their first fetch) change nothing", () => {
+  const before = JSON.parse(readFileSync(join(HERE, "fixtures", "view-before.json"), "utf8"));
+  for (const [name, mk] of Object.entries(scenarios)) {
+    const st = { ...mk(), opencode: GONE, pi: GONE };
+    const card = cardModel(st, SNAP_NOW, PROVIDERS);
+    assert.equal(card.arrows, false, name);
+    assert.deepEqual(strip(card), before[name].card, `${name} card`);
+    assert.deepEqual(barModel(st, DEFAULTS, SNAP_NOW, PROVIDERS), before[name].bar, `${name} bar`);
+    assert.deepEqual(barModel(st, livePrefs(undefined, undefined), SNAP_NOW, PROVIDERS), before[name].bar, `${name} bar, live default prefs`);
+  }
+});
+
+test("card, bar and density: a passed reset, tight windows and bar prefs give what 19fda91 gave", () => {
+  const before = JSON.parse(readFileSync(join(HERE, "fixtures", "view-before-extra.json"), "utf8"));
+  for (const [name, mk] of Object.entries(extraScenarios)) {
+    for (const [pname, raw] of Object.entries(BAR_PREFS)) {
+      const want = before[name][pname];
+      const prefs = livePrefs(raw, undefined);
+      for (const extra of [{}, { opencode: GONE, pi: GONE }]) {
+        for (const providers of [[claude, codex], PROVIDERS]) {
+          const at = `${name}, ${pname}, ${providers.length} providers${extra.pi ? ", spend not installed" : ""}`;
+          const st = { ...mk(), ...extra };
+          const card = cardModel(st, SNAP_NOW, providers, prefs);
+          assert.equal(card.arrows, false, at);
+          assert.deepEqual(strip(card), want.card, `${at}: card`);
+          const bar = barModel(st, prefs, SNAP_NOW, providers);
+          assert.deepEqual(bar, want.bar, `${at}: bar`);
+          const density = Object.fromEntries(DENSITY_WIDTHS.map((w) => [w, chooseDensity(bar, w, prefs.showBars)]));
+          assert.deepEqual(density, want.density, `${at}: density`);
+        }
+      }
+    }
+  }
+});
