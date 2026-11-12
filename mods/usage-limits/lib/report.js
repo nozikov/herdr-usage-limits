@@ -2,6 +2,8 @@
 //
 // Window: { id, short, long, percent (0–100), resetsAt (epoch s | null), durationSec (s | null) }
 // Report: { status: "ok" | "unavailable" | "error", message, plan, observedAt (epoch s), source, windows }
+// A spend provider's ok report has no windows and carries spend: { today, week } (token counts;
+// week is the last 7 days, today included).
 
 export function makeWindow({ id, short, long, percent, resetsAt = null, durationSec = null }) {
   return {
@@ -16,6 +18,10 @@ export function makeWindow({ id, short, long, percent, resetsAt = null, duration
 
 export function okReport(source, now, windows, plan = null, observedAt = now) {
   return { status: "ok", message: null, plan, observedAt, source, windows };
+}
+
+export function spendReport(source, now, today, week, observedAt = now) {
+  return { status: "ok", message: null, plan: null, observedAt, source, windows: [], spend: { today, week } };
 }
 
 export function errorReport(source, message, now) {

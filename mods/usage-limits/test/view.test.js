@@ -248,3 +248,207 @@ test("panelOnEnter: settings stay if the pointer never left", () => {
 test("panelOnEnter: limits stay limits", () => {
   assert.equal(panelOnEnter("limits", 1000, 9000, 300), "limits");
 });
+
+// ---- spend, folds and panel visibility ----
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { tightest, hasLimits, limitsSettled, wanted } from "../lib/view.js";
+import { okReport, errorReport, unavailableReport, spendReport, makeWindow } from "../lib/report.js";
+import { PROVIDERS } from "../providers/index.js";
+import { scenarios, NOW as SNAP_NOW } from "./_view-scenarios.js";
+import { HERE } from "./_util.js";
+
+const OC = { id: "opencode", name: "OpenCode", icon: "i", kind: "spend" };
+const WITH_SPEND = [claude, codex, OC];
+const DEFAULTS = { hidden: [], hiddenWindows: [] };
+const win = (id, percent, resetsAt, durationSec = 18000) => makeWindow({ id, short: id, long: `Long ${id}`, percent, resetsAt, durationSec });
+const lim = (windows, at = NOW) => ({ report: okReport("x", at, windows, "pro"), lastGood: okReport("x", at, windows, "pro"), installed: true });
+const spend = (today, week, at = NOW) => ({ report: spendReport("y", at, today, week), lastGood: spendReport("y", at, today, week), installed: true });
+const NONE = { report: null, lastGood: null, installed: null };
+const GONE = { report: null, lastGood: null, installed: false };
+const strip = (m) => {
+  const { arrows, ...rest } = m;
+  assert.equal(typeof arrows, "boolean");
+  return { ...rest, groups: rest.groups.map(({ kind, folded, summary, ...g }) => (assert.equal(kind, "limits"), assert.equal(folded, false), g)) };
+};
+
+test("spendReport: ok, no windows, today and week", () => {
+  assert.deepEqual(spendReport("opencode stats", 100, 1200, 34000, 90), {
+    status: "ok", message: null, plan: null, observedAt: 90, source: "opencode stats", windows: [], spend: { today: 1200, week: 34000 },
+  });
+  assert.equal(spendReport("s", 100, 0, 0).observedAt, 100);
+});
+
+test("tightest: highest percent, ties to the sooner reset, a passed reset loses", () => {
+  assert.equal(tightest([], NOW), null);
+  assert.equal(tightest([win("a", 40, NOW + 600), win("b", 70, NOW + 9000)], NOW).id, "b");
+  assert.equal(tightest([win("a", 70, NOW + 9000), win("b", 70, NOW + 600)], NOW).id, "b");
+  assert.equal(tightest([win("a", 70, null), win("b", 70, NOW + 600)], NOW).id, "b", "an unknown reset is later than a known one");
+  assert.equal(tightest([win("a", 99, NOW - 1), win("b", 5, NOW + 600)], NOW).id, "b");
+  assert.equal(tightest([win("a", 99, NOW - 1)], NOW).id, "a", "the only one is the tightest");
+});
+
+test("card: default prefs give today's groups, plus kind/folded/summary", () => {
+  const before = JSON.parse(readFileSync(join(HERE, "fixtures", "view-before.json"), "utf8"));
+  for (const [name, mk] of Object.entries(scenarios)) {
+    for (const providers of [[claude, codex], WITH_SPEND, PROVIDERS]) {
+      assert.deepEqual(strip(cardModel(mk(), SNAP_NOW, providers)), before[name].card, `${name} card, ${providers.length} providers`);
+      assert.deepEqual(barModel(mk(), DEFAULTS, SNAP_NOW, providers), before[name].bar, `${name} bar, ${providers.length} providers`);
+    }
+  }
+});
+
+test("card: a limits provider with no state still loads, a spend one with no state is absent", () => {
+  const m = cardModel({}, NOW, WITH_SPEND);
+  assert.deepEqual(m.groups.map((g) => [g.providerId, g.status, g.summary]), [["claude", "loading…", null], ["codex", "loading…", null]]);
+  assert.deepEqual(barModel({}, DEFAULTS, NOW, WITH_SPEND).groups.map((g) => [g.providerId, g.mark]), [["claude", "…"], ["codex", "…"]]);
+  assert.deepEqual(cardModel({ opencode: NONE }, NOW, [OC]).groups, []);
+});
+
+test("card: a folded group carries its tightest row as summary and keeps its rows", () => {
+  const s = { claude: lim([win("5h", 30, NOW + 3600), win("wk", 91, NOW + 7200, 604800)]) };
+  const g = cardModel(s, NOW, [claude], { ...DEFAULTS, folded: ["claude"] }).groups[0];
+  assert.deepEqual([g.kind, g.folded, g.rows.length], ["limits", true, 2]);
+  assert.deepEqual([g.summary.id, g.summary.long, g.summary.percent, g.summary.level, g.summary.left], ["wk", "Long wk", "91%", "hot", "2h 0m"]);
+  assert.deepEqual(g.summary, g.rows[1]);
+  const open = cardModel(s, NOW, [claude]).groups[0];
+  assert.deepEqual([open.folded, open.summary.id], [false, "wk"], "an open group has its summary too");
+  // failing: the summary comes from the last good reading, like the rows
+  s.claude.report = errorReport("x", "offline", NOW);
+  const f = cardModel(s, NOW, [claude], { ...DEFAULTS, folded: ["claude"] }).groups[0];
+  assert.deepEqual([f.failed, f.dim, f.summary.percent], [true, true, "91%"]);
+  assert.equal(cardModel({ claude: { ...s.claude, lastGood: null } }, NOW, [claude]).groups[0].summary, null);
+});
+
+test("card: hidden from the panel is absent; hidden from the bar is not", () => {
+  const s = { claude: lim([win("5h", 30, NOW + 3600)]), codex: lim([win("wk", 10, NOW + 3600)]), opencode: spend(1200, 5000) };
+  assert.deepEqual(cardModel(s, NOW, WITH_SPEND, { ...DEFAULTS, panelHidden: ["codex", "opencode"] }).groups.map((g) => g.providerId), ["claude"]);
+  assert.deepEqual(cardModel(s, NOW, WITH_SPEND, { ...DEFAULTS, hidden: ["codex"], hiddenWindows: ["claude:5h"] }).groups.map((g) => [g.providerId, g.rows.length]), [
+    ["claude", 1], ["codex", 1], ["opencode", 0],
+  ]);
+});
+
+test("card: spend group has today/week strings and no rows; zero week is absent; failing keeps last good dimmed", () => {
+  const g = cardModel({ opencode: spend(240000, 1_940_000, NOW - 60) }, NOW, [OC]).groups[0];
+  assert.deepEqual([g.kind, g.name, g.today, g.week, g.rows, g.folded, g.summary, g.failed, g.dim, g.status], ["spend", "OpenCode", "240k", "1.9M", [], false, null, false, false, "updated just now"]);
+  assert.equal(cardModel({ opencode: spend(0, 0) }, NOW, [OC]).empty, true);
+  assert.equal(cardModel({ opencode: spend(0, 12) }, NOW, [OC]).groups[0].today, "0");
+  // stale
+  assert.equal(cardModel({ opencode: spend(5, 12, NOW - 901) }, NOW, [OC]).groups[0].dim, true);
+  // failing with a last good reading: its numbers, dimmed, with the reason
+  const failing = { ...spend(800, 9000, NOW - 1200), report: errorReport("y", "database is locked", NOW) };
+  const f = cardModel({ opencode: failing }, NOW, [OC]).groups[0];
+  assert.deepEqual([f.status, f.failed, f.dim, f.age, f.today, f.week], ["database is locked", true, true, "Last reading 20 min ago", "800", "9k"]);
+  // failing with nothing known: the reason, no numbers
+  const n = cardModel({ opencode: { report: errorReport("y", "timed out", NOW), lastGood: null, installed: true } }, NOW, [OC]).groups[0];
+  assert.deepEqual([n.status, n.failed, n.today, n.week], ["timed out", true, null, null]);
+  // not installed
+  assert.equal(cardModel({ opencode: GONE }, NOW, [OC]).empty, true);
+});
+
+test("card: arrows only from three groups", () => {
+  const two = { claude: lim([win("5h", 30, NOW + 3600)]), codex: lim([win("wk", 10, NOW + 3600)]) };
+  assert.equal(cardModel(two, NOW, WITH_SPEND).arrows, false);
+  assert.equal(cardModel({ ...two, opencode: spend(1, 2) }, NOW, WITH_SPEND).arrows, true);
+  assert.equal(cardModel({ ...two, opencode: spend(0, 0) }, NOW, WITH_SPEND).arrows, false, "an absent group does not count");
+  assert.equal(cardModel({ ...two, opencode: spend(1, 2) }, NOW, WITH_SPEND, { ...DEFAULTS, panelHidden: ["codex"] }).arrows, false);
+});
+
+const spendOn = (s, prefs = DEFAULTS) => barModel(s, prefs, NOW, WITH_SPEND).groups.filter((g) => g.providerId === "opencode");
+
+test("bar: spend is off by default next to limits, on when no limits provider has windows", () => {
+  const withLimits = { claude: lim([win("5h", 30, NOW + 3600)]), codex: GONE, opencode: spend(240000, 1_000_000) };
+  assert.deepEqual(spendOn(withLimits), []);
+  assert.equal(hasLimits(withLimits, WITH_SPEND), true);
+  const alone = { claude: GONE, codex: GONE, opencode: spend(240000, 1_000_000) };
+  assert.equal(hasLimits(alone, WITH_SPEND), false);
+  assert.deepEqual(spendOn(alone), [{ providerId: "opencode", name: "OpenCode", icon: "i", mark: null, dim: false, segments: [], spend: "240k" }]);
+  assert.deepEqual(spendOn({ ...alone, opencode: spend(0, 0) }), [], "zero week is not on the bar");
+  assert.deepEqual(spendOn({ ...alone, opencode: GONE }), [], "not installed");
+  assert.deepEqual(spendOn({ ...alone, opencode: NONE }), [], "no reading yet");
+  const failing = { ...alone, opencode: { ...spend(500, 900, NOW - 1200), report: errorReport("y", "x", NOW) } };
+  assert.deepEqual(spendOn(failing).map((g) => [g.mark, g.dim, g.spend]), [["!", true, "500"]]);
+  const stale = { ...alone, opencode: spend(500, 900, NOW - 901) };
+  assert.deepEqual(spendOn(stale).map((g) => [g.mark, g.dim]), [[null, true]]);
+});
+
+test("bar: Claude installed but with no windows (unavailable) does not count as limits", () => {
+  const s = {
+    claude: { report: unavailableReport("claude CLI", "No subscription limits", NOW), lastGood: null, installed: true },
+    codex: { report: errorReport("codex", "Not signed in", NOW), lastGood: null, installed: true },
+    opencode: spend(1500, 9000),
+  };
+  assert.equal(hasLimits(s, WITH_SPEND), false);
+  assert.equal(limitsSettled(s, DEFAULTS, WITH_SPEND), true);
+  assert.deepEqual(spendOn(s).map((g) => g.spend), ["2k"]);
+  const empty = { ...s, claude: lim([]) };
+  assert.equal(hasLimits(empty, WITH_SPEND), false, "an ok reading with no windows does not count");
+});
+
+test("bar: Claude offline after a good reading still counts as limits", () => {
+  const s = { claude: lim([win("5h", 30, NOW + 3600)], NOW - 3600), codex: GONE, opencode: spend(1500, 9000) };
+  s.claude.report = errorReport("claude CLI", "offline", NOW);
+  assert.equal(hasLimits(s, WITH_SPEND), true);
+  assert.deepEqual(spendOn(s), []);
+  // a reading kept from before the CLI went away does not count
+  const gone = { ...s, claude: { ...s.claude, report: null, installed: false } };
+  assert.equal(hasLimits(gone, WITH_SPEND), false);
+  assert.equal(spendOn(gone).length, 1);
+});
+
+test("bar: spend stays off until every wanted limits provider has answered once", () => {
+  const s = { claude: NONE, codex: GONE, opencode: spend(1500, 9000) };
+  assert.equal(limitsSettled(s, DEFAULTS, WITH_SPEND), false);
+  assert.deepEqual(spendOn(s), []);
+  // Claude answers with nothing to show: now spend goes on the bar
+  s.claude = { report: unavailableReport("claude CLI", "No subscription limits", NOW), lastGood: null, installed: true };
+  assert.equal(limitsSettled(s, DEFAULTS, WITH_SPEND), true);
+  assert.equal(spendOn(s).length, 1);
+  // a limits provider in neither bar nor panel is not fetched and is not waited for
+  const unwanted = { claude: NONE, codex: GONE, opencode: spend(1500, 9000) };
+  const prefs = { ...DEFAULTS, hidden: ["claude"], panelHidden: ["claude"] };
+  assert.equal(limitsSettled(unwanted, prefs, WITH_SPEND), true);
+  assert.equal(spendOn(unwanted, prefs).length, 1);
+  // but one with a known reading still counts as limits
+  const known = { ...unwanted, claude: { ...lim([win("5h", 30, NOW + 3600)]), report: null } };
+  assert.equal(hasLimits(known, WITH_SPEND), true);
+  assert.deepEqual(spendOn(known, prefs), []);
+});
+
+test("bar: an explicit spend choice wins both ways", () => {
+  const withLimits = { claude: lim([win("5h", 30, NOW + 3600)]), codex: GONE, opencode: spend(1500, 9000) };
+  assert.equal(spendOn(withLimits, { ...DEFAULTS, spendOnBar: { opencode: true } }).length, 1);
+  const alone = { claude: GONE, codex: GONE, opencode: spend(1500, 9000) };
+  assert.deepEqual(spendOn(alone, { ...DEFAULTS, spendOnBar: { opencode: false } }), []);
+  const unsettled = { claude: NONE, codex: GONE, opencode: spend(1500, 9000) };
+  assert.equal(spendOn(unsettled, { ...DEFAULTS, spendOnBar: { opencode: true } }).length, 1, "an explicit on does not wait");
+  // the legacy bar list does not apply to spend
+  assert.equal(spendOn(alone, { ...DEFAULTS, hidden: ["opencode"] }).length, 1);
+});
+
+test("wanted: on the bar or in the panel; in neither → false; spend follows its effective bar state", () => {
+  const s = { claude: lim([win("5h", 30, NOW + 3600)]), codex: GONE, opencode: spend(1500, 9000) };
+  assert.equal(wanted(DEFAULTS, claude, s, WITH_SPEND), true);
+  assert.equal(wanted({ ...DEFAULTS, hidden: ["claude"] }, claude, s, WITH_SPEND), true, "panel only");
+  assert.equal(wanted({ ...DEFAULTS, panelHidden: ["claude"] }, claude, s, WITH_SPEND), true, "bar only");
+  assert.equal(wanted({ ...DEFAULTS, hidden: ["claude"], panelHidden: ["claude"] }, claude, s, WITH_SPEND), false);
+  assert.equal(wanted(DEFAULTS, OC, s, WITH_SPEND), true, "panel by default");
+  const noPanel = { ...DEFAULTS, panelHidden: ["opencode"] };
+  assert.equal(wanted(noPanel, OC, s, WITH_SPEND), false, "off the bar next to limits, out of the panel");
+  assert.equal(wanted(noPanel, OC, { ...s, claude: GONE }, WITH_SPEND), true, "on the bar by default with no limits");
+  assert.equal(wanted({ ...noPanel, spendOnBar: { opencode: true } }, OC, s, WITH_SPEND), true);
+  assert.equal(wanted({ ...noPanel, spendOnBar: { opencode: false } }, OC, { ...s, claude: GONE }, WITH_SPEND), false);
+});
+
+test("density: a spend group takes room", () => {
+  const limitsOnly = barModel({ claude: lim([win("5h", 30, NOW + 3600)]) }, DEFAULTS, NOW, [claude]);
+  const both = barModel({ claude: lim([win("5h", 30, NOW + 3600)]), opencode: spend(240000, 1_000_000) }, { ...DEFAULTS, spendOnBar: { opencode: true } }, NOW, [claude, OC]);
+  assert.equal(both.groups.length, 2);
+  // limits alone fit with bars at 120px; with the spend group they no longer do
+  assert.equal(chooseDensity(limitsOnly, 120), 0);
+  assert.ok(chooseDensity(both, 120) > 0);
+  assert.equal(chooseDensity(both, 400), 0);
+  const spendAlone = barModel({ opencode: spend(240000, 1_000_000) }, { ...DEFAULTS, spendOnBar: { opencode: true } }, NOW, [OC]);
+  assert.equal(chooseDensity(spendAlone, 60), 3, "nothing to drop: it stays at the narrowest");
+  assert.equal(chooseDensity(spendAlone, 200), 0);
+});
