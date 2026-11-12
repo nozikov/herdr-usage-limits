@@ -8,7 +8,7 @@ test("descriptor and registry", () => {
   assert.equal(codex.id, "codex");
   assert.equal(codex.icon, "icons/codex.svg");
   assert.equal(codex.helper, "helpers/codex-limits.sh");
-  assert.deepEqual(PROVIDERS.map((p) => p.id), ["claude", "codex", "pi"]);
+  assert.deepEqual(PROVIDERS.map((p) => p.id), ["claude", "codex", "opencode", "pi"]);
 });
 
 test("plus fixture → 5h 0, wk 11 with durations from windowDurationMins", () => {

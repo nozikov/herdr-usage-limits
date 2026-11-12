@@ -422,3 +422,43 @@ test("pi spend helper: a user message quoting an assistant reply adds no line, n
   assert.equal(r.stdout, "2026-11-12T09:30:00.000Z 42\n");
   assert.doesNotMatch(r.stdout, /secret/);
 });
+
+// ---- opencode-spend.sh ----
+
+const FAKE_OC = join(HERE, "fake-cli", "opencode");
+
+test("opencode spend helper: bogus bin → exit 127", () => {
+  const r = run("opencode-spend.sh", { HERDR_USAGE_OPENCODE_BIN: "/nonexistent/opencode" });
+  assert.equal(r.status, 127);
+  assert.equal(r.stdout, "");
+});
+
+test("opencode spend helper: one line with today's and the week's replies", () => {
+  const r = run("opencode-spend.sh", { HERDR_USAGE_OPENCODE_BIN: FAKE_OC });
+  assert.equal(r.status, 0);
+  assert.equal(r.stdout.split("\n").length, 2, "exactly one line");
+  const out = JSON.parse(r.stdout);
+  assert.equal(out.today.tokens.input, 17456);
+  assert.equal(out.week.tokens.input, 412300);
+  assert.ok(r.ms < 5000, `took ${r.ms} ms`);
+});
+
+test("opencode spend helper: CLI fails → exit 1, no output", () => {
+  const r = run("opencode-spend.sh", { HERDR_USAGE_OPENCODE_BIN: FAKE_OC, FAKE_OPENCODE: "fail" });
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, "");
+});
+
+test("opencode spend helper: CLI prints no JSON object → exit 1", () => {
+  const r = run("opencode-spend.sh", { HERDR_USAGE_OPENCODE_BIN: "/bin/echo" });
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, "");
+});
+
+test("opencode spend helper: CLI that never answers → exit 1 within 20 s and no leftover process", { timeout: 30000 }, () => {
+  const r = run("opencode-spend.sh", { HERDR_USAGE_OPENCODE_BIN: FAKE_OC, FAKE_OPENCODE: "hang" });
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, "");
+  assert.ok(r.ms < 20000, `took ${r.ms} ms`);
+  assert.equal(alive("fake-cli/opencode"), false, "hung CLI left running");
+});

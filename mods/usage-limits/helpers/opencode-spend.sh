@@ -1,0 +1,52 @@
+#!/bin/sh
+# Prints OpenCode's token stats for today and the last 7 days as one JSON line and exits:
+#   {"today":<opencode stats --days 0 --json>,"week":<opencode stats --days 7 --json>}
+#
+# OpenCode counts its own spend; this script only runs its CLI and reads no files.
+# The replies hold counts, costs and model/tool names, no message text.
+# --days 0 is today since local midnight. --days 7 is today and the six days before:
+# on opencode 2.2.5 its range.from is local midnight six days back (checked against
+# --days 0 and --days 6, which starts one day later), so N counts today.
+# Adding the tokens up is providers/opencode.js's job.
+#
+# Exit: 0 = printed, 127 = opencode CLI not found, 1 = a call failed, printed no JSON
+# object, or didn't finish within 10 s (it is killed).
+# Override the binary with HERDR_USAGE_OPENCODE_BIN.
+
+OC=$(command -v "${HERDR_USAGE_OPENCODE_BIN:-opencode}" 2>/dev/null) || exit 127
+
+dir=$(mktemp -d "${TMPDIR:-/tmp}/herdr-opencode-spend.XXXXXX") || exit 1
+trap 'rm -rf "$dir"' EXIT
+
+# Both calls run at once, stdin closed, under one deadline.
+"$OC" stats --days 0 --json </dev/null >"$dir/today" 2>/dev/null &
+p1=$!
+"$OC" stats --days 7 --json </dev/null >"$dir/week" 2>/dev/null &
+p2=$!
+
+i=0
+while kill -0 "$p1" 2>/dev/null || kill -0 "$p2" 2>/dev/null; do
+  if [ "$i" -ge 50 ]; then
+    kill "$p1" "$p2" 2>/dev/null
+    wait "$p1" "$p2" 2>/dev/null
+    exit 1
+  fi
+  sleep 0.2
+  i=$((i + 1))
+done
+wait "$p1" || exit 1
+wait "$p2" || exit 1
+
+# The CLI pretty-prints over many lines; JSON strings hold no raw newlines, so
+# joining the lines keeps the object intact.
+today=$(tr -d '\r\n' <"$dir/today")
+week=$(tr -d '\r\n' <"$dir/week")
+for v in "$today" "$week"; do
+  v=${v#"${v%%[![:space:]]*}"}
+  v=${v%"${v##*[![:space:]]}"}
+  case "$v" in
+    "{"*"}") ;;
+    *) exit 1 ;;
+  esac
+done
+printf '{"today":%s,"week":%s}\n' "$today" "$week"
