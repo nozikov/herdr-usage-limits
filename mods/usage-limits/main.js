@@ -7,10 +7,11 @@ import { View, div, image, svg } from "gpui-kit";
 import { HoverCard, h_flex, v_flex } from "gpui-base";
 import { exec, focused, theme, props, shared, setShared, appHome } from "herdr";
 import { PROVIDERS } from "./providers/index.js";
-import { barModel, cardModel, chooseDensity, panelOnEnter } from "./lib/view.js";
-import { effectivePrefs, isOnBar, isShown, toggleOnBar, toggleProvider, toggleShowBars, toggleShowResetTime, toggleWindow } from "./lib/prefs.js";
+import { barModel, cardModel, chooseDensity, panelOnEnter, wanted } from "./lib/view.js";
+import { effectivePrefs, inPanel, isOnBar, isShown, toggleFolded, toggleOnBar, toggleProvider, toggleShowBars, toggleShowResetTime, toggleWindow } from "./lib/prefs.js";
 import { parseSession, sessionOnBar, sessionView } from "./lib/session.js";
 import { nextState } from "./lib/state.js";
+import { errorReport } from "./lib/report.js";
 
 const MOD = "usage-limits";
 const KEY_STATE = "usage-limits.state";
@@ -20,12 +21,15 @@ const FETCH_EVERY = 5 * 60;       // s, installed providers
 const MISSING_EVERY = 60 * 60;    // s, not-installed providers
 const REFRESH_COOLDOWN = 30;      // s
 const SESSION_EVERY = 10 * 1000;   // ms, at most this often on hover
+const SPEND_TIMEOUT = 15 * 1000;   // ms, a spend helper is killed after this (pi-spend.sh has no deadline of its own)
 const AGENTS = { "claude-code": "claude", codex: "codex", opencode: "opencode", pi: "pi" }; // Herdr's app name → session.sh
 const BAR_W = 30;
 const PANEL_W = 340;
 const PANEL_BAR_W = 110;
 const SESSION_BAR_W = 60;
 const LEFT_W = 48;                   // the time-left column in the panel
+const PCT_W = 36;                    // the percent column in the panel
+const FOLDED_BAR_W = 44;
 const PANEL_OPEN_DELAY = 350;       // ms, so passing over the bar doesn't flash it
 const PANEL_CLOSE_DELAY = 300;      // ms, lets the pointer cross from the bar to the card
 
@@ -60,15 +64,20 @@ export default class UsageLimits extends View {
     this.sessionBusy = false;
     this.lastFetch = {};   // providerId → epoch s of last attempt
     this.busy = {};        // providerId → fetch in flight
+    this.unwanted = {};    // providerId → true while on neither the bar nor the panel
+    this.hovered = null;   // the provider whose panel header is under the pointer
     this.seenRefresh = shared(KEY_REFRESH) ?? 0;
     this.tick(cx, true);
     cx.timer.every(60 * 1000, (cx) => this.tick(cx, false));
   }
 
-  // Fetch whatever is due, then redraw (countdowns and pace move every minute).
+  // Fetch whatever is due and wanted, then redraw (countdowns and pace move every minute).
+  // A provider on neither the bar nor the panel isn't fetched; its last state is kept.
   tick(cx, force) {
     const st = states();
+    const prefs = this.prefs();
     for (const p of PROVIDERS) {
+      if (!wanted(prefs, p, st)) continue;
       const every = st[p.id]?.installed === false ? MISSING_EVERY : FETCH_EVERY;
       if (force || now() - (this.lastFetch[p.id] ?? 0) >= every) this.fetch(p, cx);
     }
@@ -83,11 +92,21 @@ export default class UsageLimits extends View {
     cx.spawn(async (cx) => {
       let next;
       const prev = states()[p.id] ?? { report: null, lastGood: null, installed: null };
+      const spend = p.kind === "spend";
       try {
-        const r = await exec("sh", [`${appHome()}/mods/${MOD}/${p.helper}`]);
-        next = r.code === 127 ? nextState(prev, null, false) : nextState(prev, p.parse(r.stdout, now()), true);
+        const r = spend
+          ? await exec("sh", [`${appHome()}/mods/${MOD}/${p.helper}`], { timeout: SPEND_TIMEOUT })
+          : await exec("sh", [`${appHome()}/mods/${MOD}/${p.helper}`]);
+        if (spend && r.code !== 0 && r.code !== 127) {
+          // A failed spend helper prints nothing, which would parse as "0 tokens": say it failed.
+          next = nextState(prev, errorReport(p.helper, `Couldn't count ${p.name} tokens`, now()), true);
+        } else {
+          next = r.code === 127 ? nextState(prev, null, false) : nextState(prev, p.parse(r.stdout, now()), true);
+        }
       } catch (e) {
-        next = { ...prev, report: { status: "error", message: String(e?.message ?? e), plan: null, observedAt: now(), source: p.helper, windows: [] } };
+        next = spend
+          ? nextState(prev, errorReport(p.helper, String(e?.message ?? e), now()), true) // e.g. killed at SPEND_TIMEOUT
+          : { ...prev, report: { status: "error", message: String(e?.message ?? e), plan: null, observedAt: now(), source: p.helper, windows: [] } };
       }
       this.busy[p.id] = false;
       setShared(KEY_STATE, { ...states(), [p.id]: next });
@@ -150,6 +169,8 @@ export default class UsageLimits extends View {
       this.leftAt = Date.now();
       return;
     }
+    // A panel that closed under the pointer never reported leaving a header.
+    if (this.leftAt != null && Date.now() - this.leftAt > PANEL_CLOSE_DELAY) this.hovered = null;
     this.panel = panelOnEnter(this.panel, this.leftAt, Date.now(), PANEL_CLOSE_DELAY);
     this.leftAt = null;
     if (Date.now() - this.sessionAt >= SESSION_EVERY) this.readSession(cx);
@@ -169,6 +190,13 @@ export default class UsageLimits extends View {
       .when(density < 2, (e) => e.child(div().text_size(10.5).text_color(t.dim).child(s.short)))
       .when(density === 0, (e) => e.child(usageBar(BAR_W, s.fill, s.tick, color, t)))
       .child(div().whitespace_nowrap().text_color(limitColor(s.level, s.text, t)).child(density === 3 ? s.brief : s.text));
+  }
+
+  // A spend provider on the bar: today's tokens.
+  spendSegment(today, t) {
+    return h_flex().gap(5).items_center().flex_none()
+      .child(div().text_size(10.5).text_color(t.dim).child("today"))
+      .child(div().whitespace_nowrap().text_color(t.foreground).child(today));
   }
 
   renderBar(cx) {
@@ -197,11 +225,14 @@ export default class UsageLimits extends View {
           .opacity(g.dim ? 0.55 : 1)
           .child(image(g.icon).size(13))
           .when(g.mark != null, (e) => e.child(div().text_color(t.dim).child(g.mark)))
-          .children(g.segments.map((s) => this.segment(s, density, t))));
+          .children(g.segments.map((s) => this.segment(s, density, t)))
+          .when(g.spend != null, (e) => e.child(this.spendSegment(g.spend, t))));
     });
-    const panel = cardModel(st, now());
-    // With no CLI installed there are no limits to show, so settings are all there is.
-    const body = this.panel === "settings" || panel.empty ? this.settings(!panel.empty, t) : this.limits(panel, t);
+    const panel = cardModel(st, now(), PROVIDERS, prefs);
+    const session = inPanel(prefs, "session") ? sessionView(this.session?.data, this.session?.title) : null;
+    // With nothing to show (no CLI installed, or all of it taken out), settings are all there is.
+    const empty = panel.empty && !session;
+    const body = this.panel === "settings" || empty ? this.settings(!empty, t) : this.limits(panel, session, t);
     return root.child(HoverCard.new("ul-panel").anchor("bottom_right").open_delay(PANEL_OPEN_DELAY).close_delay(PANEL_CLOSE_DELAY)
       .trigger(content)
       .content(body));
@@ -220,16 +251,56 @@ export default class UsageLimits extends View {
       .when(r.detail !== "", (e) => e.child(div().text_size(11).text_color(t.dim).truncate().child(r.detail)));
   }
 
-  cardGroup(g, t) {
-    return v_flex().gap(8)
-      .child(h_flex().gap(6).items_center()
-        .child(image(g.icon).size(13))
-        .child(div().flex_none().font_semibold().child(g.name))
-        .when(g.plan != null, (e) => e.child(div().flex_none().px(5).rounded(4).bg(t.raised).text_size(10).text_color(t.accent).child(g.plan)))
-        .child(div().flex_1())
-        .child(div().min_w(0).truncate().text_size(11).text_color(g.failed ? levelColor("hot", t) : t.dim).child(g.status)))
-      .when(g.age != null, (e) => e.child(div().text_size(11).text_color(t.dim).child(g.age)))
-      .child(v_flex().gap(6).opacity(g.dim ? 0.55 : 1).children(g.rows.map((r) => this.cardRow(r, g.providerId, t))));
+  // A provider with limits. Its header folds it on a click. Open, it is the group as it
+  // always was; the arrow joins it only when folded, with three providers or more, or under
+  // the pointer. Folded, the header alone carries the tightest window on the rows' columns.
+  cardGroup(g, arrows, t) {
+    const id = g.providerId;
+    const folded = g.folded;
+    const head = h_flex().id(`ul-head-${id}`).gap(6).items_center()
+      .on_hover((on, cx) => { this.hovered = on ? id : this.hovered === id ? null : this.hovered; cx.notify(); })
+      .on_click((_e, cx) => { setShared(KEY_PREFS, toggleFolded(this.prefs(), id)); cx.notify(); })
+      .child(image(g.icon).size(13))
+      .child(div().flex_none().font_semibold().child(g.name))
+      .when(g.plan != null, (e) => e.child(div().flex_none().px(5).rounded(4).bg(t.raised).text_size(10).text_color(t.accent).child(g.plan)))
+      .when(folded || arrows || this.hovered === id, (e) => e.child(svg(`mods/${MOD}/icons/${folded ? "chevron-right" : "chevron-down"}.svg`).size(12).text_color(t.dim)));
+    const s = folded ? g.summary : null;
+    if (!s) {
+      head.child(div().flex_1())
+        .child(div().min_w(0).truncate().text_size(11).text_color(g.failed ? levelColor("hot", t) : t.dim).child(g.status));
+      if (folded) return v_flex().gap(8).child(head);
+      return v_flex().gap(8)
+        .child(head)
+        .when(g.age != null, (e) => e.child(div().text_size(11).text_color(t.dim).child(g.age)))
+        .child(v_flex().gap(6).opacity(g.dim ? 0.55 : 1).children(g.rows.map((r) => this.cardRow(r, id, t))));
+    }
+    // Failing: the reason where the window's name goes, the last reading dimmed. Stale: dimmed.
+    const numbers = g.dim ? 0.55 : 1;
+    const tail = h_flex().gap(8).items_center().flex_none()
+      .when(!g.failed, (e) => e.child(div().opacity(numbers).child(usageBar(FOLDED_BAR_W, s.fill, s.tick, levelColor(s.level, t), t))))
+      .child(div().w(PCT_W).flex_none().flex().justify_end().whitespace_nowrap().opacity(numbers).text_color(limitColor(s.level, s.percent, t)).child(s.percent))
+      .child(div().w(LEFT_W).flex_none().flex().justify_end().whitespace_nowrap().opacity(numbers).text_size(11).text_color(t.dim).child(s.left));
+    return v_flex().gap(8).child(head
+      .child(this.rightLabel(g.failed ? g.status : s.long, g.failed, t))
+      .child(tail));
+  }
+
+  // The flexible gap with a dim label at its right end (red when it is a failure's reason).
+  rightLabel(text, failed, t) {
+    return div().flex_1().min_w(0).flex().justify_end()
+      .child(div().min_w(0).truncate().text_size(11).text_color(failed ? levelColor("hot", t) : t.dim).child(text));
+  }
+
+  // A provider that only counts tokens: one line on the columns of a limit row.
+  spendLine(g, t) {
+    const numbers = g.failed ? 0.55 : 1;
+    return h_flex().gap(6).items_center().opacity(g.dim && !g.failed ? 0.55 : 1)
+      .child(image(g.icon).size(13))
+      .child(div().flex_none().font_semibold().child(g.name))
+      .child(this.rightLabel(g.failed ? g.status : "Tokens today / 7d", g.failed, t))
+      .child(h_flex().gap(8).items_center().flex_none()
+        .child(div().w(PCT_W).flex_none().flex().justify_end().whitespace_nowrap().opacity(numbers).text_color(g.today == null ? t.dim : t.foreground).child(g.today ?? "—"))
+        .child(div().w(LEFT_W).flex_none().flex().justify_end().whitespace_nowrap().opacity(numbers).text_color(g.week == null ? t.dim : t.muted).child(g.week ?? "—")));
   }
 
   sessionBlock(v, t) {
@@ -255,14 +326,14 @@ export default class UsageLimits extends View {
       .on_hover((on, cx) => this.hover(on, cx));
   }
 
-  limits(model, t) {
+  // session: the session block's view, or null when there's none or it's out of the panel.
+  limits(model, session, t) {
     const rule = () => div().h(1).bg(t.border).flex_none();
     const body = this.shell(t);
-    const session = sessionView(this.session?.data, this.session?.title);
     if (session) body.child(this.sessionBlock(session, t)).child(rule());
     model.groups.forEach((g, i) => {
       if (i > 0) body.child(rule());
-      body.child(this.cardGroup(g, t));
+      body.child(g.kind === "spend" ? this.spendLine(g, t) : this.cardGroup(g, model.arrows, t));
     });
     const cooling = this.cooling();
     return body.child(rule())
@@ -329,10 +400,16 @@ export default class UsageLimits extends View {
       this.session = null;
       this.readSession(cx);
     }
+    // A provider just put back on the bar or in the panel is fetched at once.
+    const st = states();
+    const prefs = this.prefs();
+    const want = PROVIDERS.filter((p) => wanted(prefs, p, st));
+    for (const p of want) if (this.unwanted[p.id]) this.fetch(p, cx);
+    this.unwanted = Object.fromEntries(PROVIDERS.filter((p) => !want.includes(p)).map((p) => [p.id, true]));
     const asked = shared(KEY_REFRESH) ?? 0;
     if (asked !== this.seenRefresh) {
       this.seenRefresh = asked;
-      for (const p of PROVIDERS) this.fetch(p, cx);
+      for (const p of want) this.fetch(p, cx);
     }
     return this.renderBar(cx);
   }
