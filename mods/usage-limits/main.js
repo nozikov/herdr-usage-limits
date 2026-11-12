@@ -22,6 +22,7 @@ const MISSING_EVERY = 60 * 60;    // s, not-installed providers
 const REFRESH_COOLDOWN = 30;      // s
 const SESSION_EVERY = 10 * 1000;   // ms, at most this often on hover
 const SPEND_TIMEOUT = 15 * 1000;   // ms, a spend helper is killed after this (pi-spend.sh has no deadline of its own)
+const SESSION_TIMEOUT = 15 * 1000; // ms, session.sh for OpenCode and Pi (ps, lsof, sqlite3) is killed after this
 const AGENTS = { "claude-code": "claude", codex: "codex", opencode: "opencode", pi: "pi" }; // Herdr's app name → session.sh
 const BAR_W = 30;
 const PANEL_W = 340;
@@ -67,6 +68,8 @@ export default class UsageLimits extends View {
     this.busy = {};        // providerId → fetch in flight
     this.unwanted = {};    // providerId → true while on neither the bar nor the panel
     this.hovered = null;   // the provider whose panel header is under the pointer
+    this.foldedHere = new Set(); // providers folded by a click since the panel opened: their rows' space is kept
+    this.sessionWas = this.sessionWanted(this.prefs());
     this.seenRefresh = shared(KEY_REFRESH) ?? 0;
     this.tick(cx, true);
     cx.timer.every(60 * 1000, (cx) => this.tick(cx, false));
@@ -115,9 +118,18 @@ export default class UsageLimits extends View {
     });
   }
 
+  // The session is read only while its block is in the panel or a number of it is on the bar.
+  sessionWanted(prefs) {
+    return inPanel(prefs, "session") || prefs.sessionOnBar.length > 0;
+  }
+
   // Terminal → its agent's process → that process's session. Any step failing means
   // no block at all: another session's numbers would be worse than none.
   readSession(cx) {
+    if (!this.sessionWanted(this.prefs())) {
+      this.session = null;
+      return;
+    }
     if (this.sessionBusy) return; // a hung hc mustn't pile up; it re-reads below if focus moved
     const terminal = this.terminal;
     this.sessionAt = Date.now();
@@ -133,7 +145,9 @@ export default class UsageLimits extends View {
         const app = AGENTS[info.status?.app];
         const pid = info.foreground?.pid;
         if (app && pid) {
-          const r = await exec("sh", [`${appHome()}/mods/${MOD}/helpers/session.sh`, app, String(pid)]);
+          const r = app === "opencode" || app === "pi"
+            ? await exec("sh", [`${appHome()}/mods/${MOD}/helpers/session.sh`, app, String(pid)], { timeout: SESSION_TIMEOUT })
+            : await exec("sh", [`${appHome()}/mods/${MOD}/helpers/session.sh`, app, String(pid)]);
           const data = r.code === 0 ? parseSession(r.stdout, app) : null;
           if (data) next = { data, title: (info.cwd ?? "").split("/").pop() };
         }
@@ -146,7 +160,7 @@ export default class UsageLimits extends View {
         this.readSession(cx); // focus moved on while this was reading
         return;
       }
-      this.session = next;
+      this.session = this.sessionWanted(this.prefs()) ? next : null; // hidden everywhere meanwhile: dropped
       cx.notify();
     });
   }
@@ -171,7 +185,10 @@ export default class UsageLimits extends View {
       return;
     }
     // A panel that closed under the pointer never reported leaving a header.
-    if (this.leftAt != null && Date.now() - this.leftAt > PANEL_CLOSE_DELAY) this.hovered = null;
+    if (this.leftAt != null && Date.now() - this.leftAt > PANEL_CLOSE_DELAY) {
+      this.hovered = null;
+      this.foldedHere.clear(); // reopened: a kept space goes
+    }
     this.panel = panelOnEnter(this.panel, this.leftAt, Date.now(), PANEL_CLOSE_DELAY);
     this.leftAt = null;
     if (Date.now() - this.sessionAt >= SESSION_EVERY) this.readSession(cx);
@@ -233,6 +250,7 @@ export default class UsageLimits extends View {
     const session = inPanel(prefs, "session") ? sessionView(this.session?.data, this.session?.title) : null;
     // With nothing to show (no CLI installed, or all of it taken out), settings are all there is.
     const empty = panel.empty && !session;
+    if (empty) this.panel = "settings"; // so ticking a Panel box doesn't swap the view under the pointer
     const body = this.panel === "settings" || empty ? this.settings(!empty, t) : this.limits(panel, session, t);
     return root.child(HoverCard.new("ul-panel").anchor("bottom_right").open_delay(PANEL_OPEN_DELAY).close_delay(PANEL_CLOSE_DELAY)
       .trigger(content)
@@ -241,10 +259,11 @@ export default class UsageLimits extends View {
 
   // ---------- panel: limits ----------
 
-  cardRow(r, providerId, t) {
+  // ghost: the same row without its id and its hint, for the space a fold keeps.
+  cardRow(r, providerId, t, ghost = false) {
     return v_flex().gap(3)
-      .child(h_flex().id(`ul-row-${providerId}-${r.id}`).gap(8).items_center()
-        .when(r.hint != null, (e) => e.tooltip(r.hint))
+      .child(h_flex().when(!ghost, (e) => e.id(`ul-row-${providerId}-${r.id}`)).gap(8).items_center()
+        .when(!ghost && r.hint != null, (e) => e.tooltip(r.hint))
         .child(div().flex_1().min_w(0).truncate().text_color(t.muted).child(r.long))
         .child(usageBar(PANEL_BAR_W, r.fill, r.tick, levelColor(r.level, t), t))
         .child(div().w(36).flex_none().flex().justify_end().whitespace_nowrap().text_color(limitColor(r.level, r.percent, t)).child(r.percent))
@@ -260,21 +279,25 @@ export default class UsageLimits extends View {
     const folded = g.folded;
     const head = h_flex().id(`ul-head-${id}`).gap(6).items_center().cursor_pointer()
       .on_hover((on, cx) => { this.hovered = on ? id : this.hovered === id ? null : this.hovered; cx.notify(); })
-      .on_click((_e, cx) => { setShared(KEY_PREFS, toggleFolded(this.prefs(), id)); cx.notify(); })
+      .on_click((_e, cx) => {
+        const next = toggleFolded(this.prefs(), id);
+        setShared(KEY_PREFS, next);
+        if (next.folded.includes(id)) this.foldedHere.add(id); else this.foldedHere.delete(id);
+        cx.notify();
+      })
       .child(image(g.icon).size(13))
       .child(div().flex_none().font_semibold().child(g.name))
       .when(g.plan != null, (e) => e.child(div().flex_none().px(5).rounded(4).bg(t.raised).text_size(10).text_color(t.accent).child(g.plan)))
       .when(folded || arrows || this.hovered === id, (e) => e.child(svg(`mods/${MOD}/icons/${folded ? "chevron-right" : "chevron-down"}.svg`).size(12).text_color(t.dim)));
     const s = folded ? g.summary : null;
     if (!s) {
-      if (folded && g.failed) return v_flex().gap(8).child(head.child(this.failure(g.status, t)));
+      if (folded && g.failed) return this.kept(v_flex().gap(8).child(head.child(this.failure(g.status, t))), g, t);
       head.child(div().flex_1())
         .child(div().min_w(0).truncate().text_size(11).text_color(g.failed ? levelColor("hot", t) : t.dim).child(g.status));
-      if (folded) return v_flex().gap(8).child(head);
+      if (folded) return this.kept(v_flex().gap(8).child(head), g, t);
       return v_flex().gap(8)
         .child(head)
-        .when(g.age != null, (e) => e.child(div().text_size(11).text_color(t.dim).child(g.age)))
-        .child(v_flex().gap(6).opacity(g.dim ? 0.55 : 1).children(g.rows.map((r) => this.cardRow(r, id, t))));
+        .children(this.groupBody(g, t));
     }
     // Failing: the reason where the window's name goes, the last reading dimmed. Stale: dimmed.
     const numbers = g.dim ? 0.55 : 1;
@@ -282,9 +305,26 @@ export default class UsageLimits extends View {
       .when(!g.failed, (e) => e.child(div().opacity(numbers).child(usageBar(FOLDED_BAR_W, s.fill, s.tick, levelColor(s.level, t), t))))
       .child(div().w(PCT_W).flex_none().flex().justify_end().whitespace_nowrap().opacity(numbers).text_color(limitColor(s.level, s.percent, t)).child(s.percent))
       .child(div().w(LEFT_W).flex_none().flex().justify_end().whitespace_nowrap().opacity(numbers).text_size(11).text_color(t.dim).child(s.left));
-    return v_flex().gap(8).child(head
+    return this.kept(v_flex().gap(8).child(head
       .child(g.failed ? this.failure(g.status, t) : this.rightLabel(s.long, t))
-      .child(tail));
+      .child(tail)), g, t);
+  }
+
+  // What an open group shows under its header: its age line, if any, and its rows.
+  groupBody(g, t, ghost = false) {
+    const body = [];
+    if (g.age != null) body.push(div().text_size(11).text_color(t.dim).child(g.age));
+    body.push(v_flex().gap(6).opacity(g.dim ? 0.55 : 1).children(g.rows.map((r) => this.cardRow(r, g.providerId, t, ghost))));
+    return body;
+  }
+
+  // A group folded by a click since the panel opened keeps, under its line, the space its
+  // rows took, drawn invisible (layout kept, nothing painted), so the card, which grows up
+  // from the bar, doesn't slide out from under the pointer. Dropped when the pointer leaves
+  // the panel or the panel opens again.
+  kept(group, g, t) {
+    if (!this.foldedHere.has(g.providerId)) return group;
+    return group.child(v_flex().gap(8).invisible().children(this.groupBody(g, t, true)));
   }
 
   // A one-line group's failure: its reason, flagged, where the flexible gap starts.
@@ -333,6 +373,7 @@ export default class UsageLimits extends View {
       .on_hover((on, cx) => {
         // Leaving the panel leaves every header in it, whether or not a header said so.
         if (!on && this.hovered != null) { this.hovered = null; cx.notify(); }
+        if (!on && this.foldedHere.size) { this.foldedHere.clear(); cx.notify(); } // the kept space goes
         this.hover(on, cx);
       });
   }
@@ -363,6 +404,7 @@ export default class UsageLimits extends View {
   // A row with a box: a click anywhere on it toggles the box. panel: { on, onToggle } adds a
   // second box at the right end, under "Panel". The bar part and the panel box are then
   // siblings, neither inside the other, so a click reaches exactly one of the two handlers.
+  // Both stretch to the row's height and carry its vertical padding, so all of it answers.
   check(id, on, label, onToggle, t, indent = 0, extra = null, panel = null) {
     if (panel == null) {
       return h_flex().id(id).gap(8).items_center().pl(indent).py(3).rounded(4).cursor_pointer()
@@ -372,19 +414,20 @@ export default class UsageLimits extends View {
         .children(label)
         .when(extra != null, (e) => e.child(div().text_color(t.dim).truncate().child(extra)));
     }
-    return h_flex().id(id).items_center().pl(indent).py(3).rounded(4)
+    return h_flex().id(id).items_stretch().pl(indent).rounded(4)
       .hover((s) => s.bg(t.hover))
-      .child(h_flex().id(`${id}-bar`).flex_1().min_w(0).gap(8).items_center().cursor_pointer()
+      .child(h_flex().id(`${id}-bar`).flex_1().min_w(0).gap(8).items_center().py(3).cursor_pointer()
         .on_click((_e, cx) => { onToggle(); cx.notify(); })
         .child(this.checkBox(on, t))
         .children(label)
         .when(extra != null, (e) => e.child(div().text_color(t.dim).truncate().child(extra))))
-      .child(this.panelBox(`${id}-panel`, panel.on, panel.onToggle, t));
+      .child(this.panelBox(`${id}-panel`, panel.on, panel.onToggle, t, true));
   }
 
   // The right-hand box: whether this shows in the panel. Its whole slot is the target.
-  panelBox(id, on, onToggle, t) {
-    return div().id(id).w(PANEL_BOX_W).flex_none().flex().justify_end().cursor_pointer()
+  // inRow: the slot is a row's right part, centred, with the row's vertical padding.
+  panelBox(id, on, onToggle, t, inRow = false) {
+    return div().id(id).w(PANEL_BOX_W).flex_none().flex().justify_end().when(inRow, (e) => e.items_center().py(3)).cursor_pointer()
       .on_click((_e, cx) => { onToggle(); cx.notify(); })
       .child(this.checkBox(on, t));
   }
