@@ -10,7 +10,7 @@
 # Adding the tokens up is providers/opencode.js's job.
 #
 # Exit: 0 = printed, 127 = opencode CLI not found, 1 = a call failed, printed no JSON
-# object, or didn't finish within 10 s (it is killed).
+# object, or didn't finish within 10 s (TERM, then KILL a second later).
 # Override the binary with HERDR_USAGE_OPENCODE_BIN.
 
 OC=$(command -v "${HERDR_USAGE_OPENCODE_BIN:-opencode}" 2>/dev/null) || exit 127
@@ -28,6 +28,13 @@ i=0
 while kill -0 "$p1" 2>/dev/null || kill -0 "$p2" 2>/dev/null; do
   if [ "$i" -ge 50 ]; then
     kill "$p1" "$p2" 2>/dev/null
+    # A CLI that ignores TERM gets about a second, then KILL; only then wait.
+    j=0
+    while [ "$j" -lt 5 ] && { kill -0 "$p1" 2>/dev/null || kill -0 "$p2" 2>/dev/null; }; do
+      sleep 0.2
+      j=$((j + 1))
+    done
+    kill -9 "$p1" "$p2" 2>/dev/null
     wait "$p1" "$p2" 2>/dev/null
     exit 1
   fi

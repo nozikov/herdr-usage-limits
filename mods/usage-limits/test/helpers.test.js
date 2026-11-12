@@ -462,3 +462,11 @@ test("opencode spend helper: CLI that never answers → exit 1 within 20 s and n
   assert.ok(r.ms < 20000, `took ${r.ms} ms`);
   assert.equal(alive("fake-cli/opencode"), false, "hung CLI left running");
 });
+
+test("opencode spend helper: CLI that ignores TERM → exit 1 within 20 s and no leftover process", { timeout: 30000 }, () => {
+  const r = run("opencode-spend.sh", { HERDR_USAGE_OPENCODE_BIN: FAKE_OC, FAKE_OPENCODE: "stubborn" });
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, "");
+  assert.ok(r.ms < 20000, `took ${r.ms} ms`);
+  assert.equal(alive("fake-cli/opencode"), false, "stubborn CLI left running");
+});
