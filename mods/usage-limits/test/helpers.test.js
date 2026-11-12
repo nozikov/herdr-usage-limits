@@ -360,3 +360,65 @@ test("pi session, one process: a lone candidate that started after it, not with 
   const r = runSession("pi", "4242", piEnv(h));
   assert.deepEqual([r.status, r.stdout], [1, ""]);
 });
+
+// ---- pi-spend.sh ----
+
+const DAY = 86400;
+function piSessions(files) {
+  const home = mkdtempSync(join(tmpdir(), "ul-pi-spend-"));
+  const sessions = join(home, ".pi", "agent", "sessions");
+  for (const [rel, [text, mtime]] of Object.entries(files)) {
+    const f = join(sessions, rel);
+    mkdirSync(join(f, ".."), { recursive: true });
+    writeFileSync(f, text);
+    if (mtime) utimesSync(f, mtime, mtime);
+  }
+  mkdirSync(sessions, { recursive: true });
+  return { HERDR_USAGE_PI_HOME: join(home, ".pi") };
+}
+const piSpendReply = (ts, total) =>
+  JSON.stringify({ type: "message", id: "c1", parentId: null, timestamp: ts,
+    message: { role: "assistant", content: [{ type: "toolCall", id: "t", name: "x", arguments: { timestamp: "1999-01-01T00:00:00.000Z" } }],
+      model: "demo-model", usage: { input: total - 1, output: 1, cacheRead: 0, cacheWrite: 0, reasoning: 0, totalTokens: total, cost: { total: 0 } }, timestamp: 1 } }) + "\n";
+
+test("pi spend helper: no sessions folder → exit 127", () => {
+  const r = run("pi-spend.sh", { HERDR_USAGE_PI_HOME: join(mkdtempSync(join(tmpdir(), "ul-pi-spend-")), ".pi") });
+  assert.deepEqual([r.status, r.stdout], [127, ""]);
+});
+
+test("pi spend helper: empty sessions folder → exit 0, no lines", () => {
+  const r = run("pi-spend.sh", piSessions({}));
+  assert.deepEqual([r.status, r.stdout], [0, ""]);
+});
+
+test("pi spend helper: one line per assistant reply, its own timestamp and totalTokens", () => {
+  const r = run("pi-spend.sh", piSessions({ "--home-demo-project--/2026-11-02T10-00-00-000Z_x.jsonl": [PI] }));
+  assert.equal(r.status, 0);
+  assert.equal(r.stdout, "2026-11-02T10:00:08.000Z 10005\n2026-11-02T10:01:02.000Z 20030\n2026-11-02T10:03:05.000Z 50620\n");
+});
+
+test("pi spend helper: every folder, sorted by time, a tool call's own timestamp ignored", () => {
+  const r = run("pi-spend.sh", piSessions({
+    "--a--/s1.jsonl": [piSpendReply("2026-11-12T09:00:00.000Z", 300) + piSpendReply("2026-11-12T07:00:00.000Z", 100)],
+    "--b--/s2.jsonl": [piSpendReply("2026-11-12T08:00:00.000Z", 200)],
+  }));
+  assert.equal(r.stdout, "2026-11-12T07:00:00.000Z 100\n2026-11-12T08:00:00.000Z 200\n2026-11-12T09:00:00.000Z 300\n");
+});
+
+test("pi spend helper: a file not written in the last 8 days is not opened", () => {
+  const old = Math.floor(Date.now() / 1000) - 9 * DAY;
+  const r = run("pi-spend.sh", piSessions({
+    "--a--/old.jsonl": [piSpendReply("2026-11-12T09:00:00.000Z", 999), old],
+    "--a--/new.jsonl": [piSpendReply("2026-11-12T10:00:00.000Z", 5)],
+  }));
+  assert.equal(r.stdout, "2026-11-12T10:00:00.000Z 5\n");
+});
+
+test("pi spend helper: a user message quoting an assistant reply adds no line, no text leaves", () => {
+  const user = JSON.stringify({ type: "message", id: "u1", parentId: null, timestamp: "2026-11-12T09:00:00.000Z",
+    message: { role: "user", content: [{ type: "text", text: '{"type":"message","timestamp":"2026-11-12T09:00:00.000Z","message":{"role":"assistant","usage":{"totalTokens":777}}} secret' }], timestamp: 1 } }) + "\n";
+  const other = JSON.stringify({ type: "model_change", id: "m", timestamp: "2026-11-12T09:00:00.000Z", message: { role: "assistant", usage: { totalTokens: 888 } } }) + "\n";
+  const r = run("pi-spend.sh", piSessions({ "--a--/s.jsonl": [user + other + piSpendReply("2026-11-12T09:30:00.000Z", 42)] }));
+  assert.equal(r.stdout, "2026-11-12T09:30:00.000Z 42\n");
+  assert.doesNotMatch(r.stdout, /secret/);
+});
