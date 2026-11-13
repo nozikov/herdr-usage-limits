@@ -259,47 +259,7 @@ opencode() {
   case "$start" in '' | *[!0-9]*) exit 1 ;; esac
   [ "$peers" = 1 ] || exit 1
   db=${HERDR_USAGE_OPENCODE_DB:-${XDG_DATA_HOME:-$HOME/.local/share}/opencode/opencode.db}
-  bin=${HERDR_USAGE_SQLITE_BIN:-sqlite3}
-  command -v "$bin" >/dev/null 2>&1 || exit 1
-  [ -f "$db" ] || exit 1
-  # The directory as an SQL literal: every ' doubled.
-  q=$(printf '%s' "$cwd" | sed "s/'/''/g")
-  # Context: the newest reply with tokens (one being written has none yet), all of them
-  # counted, as OpenCode's sidebar does. Calls: the person's messages. A finished
-  # compaction is a "compaction" row; its tokens are the summarising call's, and the
-  # context before it is gone: none until the next reply (OpenCode's screen shows none).
-  row=$("$bin" -readonly -batch -cmd '.timeout 2000' "$db" "
-    with c as (
-      select id, model from session_v2
-      where parent_id is null and directory = '$q' and time_updated >= ${start}000
-    ),
-    s as (select * from c where (select count(*) from c) = 1),
-    k as (
-      select seq from session_message where session_id = (select id from s) and type = 'compaction'
-        and json_extract(data, '\$.status') = 'completed'
-    ),
-    r as (
-      select coalesce(json_extract(data, '\$.tokens.input'), 0) + coalesce(json_extract(data, '\$.tokens.output'), 0)
-        + coalesce(json_extract(data, '\$.tokens.reasoning'), 0) + coalesce(json_extract(data, '\$.tokens.cache.read'), 0)
-        + coalesce(json_extract(data, '\$.tokens.cache.write'), 0) as n, seq
-      from session_message where session_id = (select id from s) and type = 'assistant'
-    )
-    select cast((select n from r where n > 0 and seq > coalesce((select max(seq) from k), 0)
-        order by seq desc limit 1) as integer),
-      (select count(*) from session_message where session_id = (select id from s) and type = 'user'),
-      (select count(*) from k),
-      replace(replace(coalesce(json_extract(model, '\$.id'), ''), char(10), ' '), char(13), ' ')
-    from s;" </dev/null 2>/dev/null) || exit 1
-  IFS='|' read -r tokens calls compactions model <<EOF
-$row
-EOF
-  case "$tokens" in '' | *[!0-9]* | 0) exit 1 ;; esac
-  case "$calls" in '' | *[!0-9]*) exit 1 ;; esac
-  case "$compactions" in '' | *[!0-9]*) exit 1 ;; esac
-  case "$model" in '' | *[!A-Za-z0-9._:/-]*) model= ;; esac
-  printf 'tokens=%d calls=%d compactions=%d' "$tokens" "$calls" "$compactions"
-  [ -n "$model" ] && printf ' model=%s' "$model"
-  printf '\n'
+  exec sh "$(dirname "$0")/opencode-session.sh" "$db" "$cwd" "$start"
 }
 
 case "$app" in

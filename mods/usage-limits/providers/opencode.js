@@ -1,9 +1,8 @@
-// OpenCode: tokens spent, as counted by OpenCode itself (helpers/opencode-spend.sh prints
-// {"today": <opencode stats --days 0 --json>, "week": <... --days 7 ...>}). The CLI
-// decides the days: today since local midnight, the week today and the six days before.
+// OpenCode: local numeric token statistics from schema adapters, or the CLI fallback.
+// Both use today since local midnight and today plus the six previous calendar days.
 import { spendReport, errorReport } from "../lib/report.js";
 
-const SOURCE = "opencode stats";
+const SOURCE = "OpenCode usage";
 
 const isNum = (v) => typeof v === "number" && Number.isFinite(v);
 const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);

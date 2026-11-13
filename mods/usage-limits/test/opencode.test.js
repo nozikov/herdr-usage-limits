@@ -19,7 +19,7 @@ test("descriptor", () => {
 test("today and week are input + output + reasoning + cache read + cache write", () => {
   const r = opencode.parse(reply(fixture("opencode-stats.today.json"), fixture("opencode-stats.week.json")), NOW);
   assert.equal(r.status, "ok");
-  assert.equal(r.source, "opencode stats");
+  assert.equal(r.source, "OpenCode usage");
   assert.equal(r.spend.today, 17493);
   assert.equal(r.spend.week, 412300 + 5120 + 880 + 96000 + 1200);
   assert.deepEqual(r.windows, []);
@@ -39,7 +39,7 @@ test("a reply without tokens → error report", () => {
     const r = opencode.parse(text, NOW);
     assert.equal(r.status, "error", text);
     assert.equal(r.message, "No stats from OpenCode");
-    assert.equal(r.source, "opencode stats");
+    assert.equal(r.source, "OpenCode usage");
   }
 });
 

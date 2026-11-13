@@ -26,7 +26,12 @@ See how much Claude Code and Codex you have left, right in Herdr's status bar:
 - **Your current session:** how full the context is, how many messages you've sent, how many times it was compacted.
 - **OpenCode and Pi:** the tokens they used today and over the last 7 days. They have no limits to show.
 
-It asks your own `claude`, `codex` and `opencode` CLIs and reads Pi's session files, so there is no API key to add and no model usage to pay for.
+OpenCode session statistics support both legacy and current SQLite storage automatically.
+Both appear as the same **OpenCode** block, with the same settings and counters; there is
+no version selector. Schema adapters handle message and compaction differences internally.
+
+It asks your own `claude` and `codex` CLIs, reads OpenCode's local database and Pi's
+session files, so there is no API key to add and no model usage to pay for.
 
 ## Read the bar
 
@@ -162,7 +167,11 @@ Give the block more weight if you want the bars to stay when a window gets tight
 ## What it runs
 
 - `sh`, your `claude` CLI and your `codex` CLI, each briefly, every 5 minutes. They use their own sign-ins and talk to Anthropic and OpenAI. The mod makes no network requests itself.
-- `opencode stats --days 0 --json` and `opencode stats --days 7 --json`, every 5 minutes, for OpenCode's tokens. Their reply holds counts, costs, model and tool names and dates, no message text; it reaches the mod whole, and the mod uses its token numbers only.
+- OpenCode's local database, read-only, for today's and seven calendar days' tokens.
+  This works for both storage formats, including OpenCode installed through NVM and
+  legacy CLIs without `stats --json`. Only numeric totals reach the mod. If no database
+  exists, it falls back to `opencode stats --days 0 --json` and `--days 7 --json`.
+  An explicit `HERDR_USAGE_OPENCODE_BIN` override also selects that CLI path.
 - `hc`, to find the agent in the focused terminal, `lsof`, to find Codex's open session file, and `ps` and `lsof`, to find an OpenCode or Pi process's folder and start time. `ps` also lists your processes, to count the copies of that agent in the folder; their names and arguments stay on your machine.
 - `python3` (standard library only) for Codex session statistics: it inspects the
   terminal process and its children, reads the identified rollout as JSON, and uses
@@ -172,6 +181,17 @@ Give the block more weight if you want the bars to stay when a window gets tight
 - It reads no token or credential file.
 - It reads the focused session's log (`~/.claude/projects/`, `~/.codex/sessions/`), which holds your conversation. `helpers/session.sh` passes on numbers only. `~/.codex/sessions/**/*.jsonl` is also the fallback for Codex's limits.
 - For OpenCode's session it reads OpenCode's database (`$XDG_DATA_HOME/opencode/opencode.db`, by default `~/.local/share/opencode/opencode.db`) with `sqlite3`, read-only. For Pi it reads Pi's session files (`~/.pi/agent/sessions/`): the focused session's, and those written in the last 8 days for the tokens. Both hold your conversation. `helpers/session.sh` and `helpers/pi-spend.sh` pass on only numbers (counts and times) and a model id. It never runs `pi`.
+
+  OpenCode's storage adapters live in `helpers/opencode/`: `legacy.sql` reads
+  `session` / `message` / `part`, and `current.sql` reads `session_v2` / `session_message`.
+  `opencode-session.sh` detects available schemas, and `session.sql` applies one shared
+  selection and counting policy. Empty migration tables do not override legacy messages;
+  duplicate migrated session IDs are deduplicated, and distinct sessions remain ambiguous.
+  The helper creates connection-local TEMP views in a read-only transaction and never
+  changes OpenCode's database. Legacy compaction requests and synthetic continuations
+  are excluded from user-call counts; only successful compactions reset context.
+  Separate spend adapters include paid compactions and subagents, aggregate from local
+  midnight (today and six previous days), and deduplicate migrated session IDs.
 - It sends no prompt and starts no turn, so it uses no model time.
 - It changes no Claude Code, Codex, OpenCode or Pi settings.
 

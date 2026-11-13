@@ -2,8 +2,9 @@
 # Prints OpenCode's token stats for today and the last 7 days as one JSON line and exits:
 #   {"today":<opencode stats --days 0 --json>,"week":<opencode stats --days 7 --json>}
 #
-# OpenCode counts its own spend; this script only runs its CLI and reads no files.
-# The replies hold counts, costs and model/tool names, no message text.
+# Prefer the local read-only DB adapters, which work with both legacy and current
+# OpenCode even when a desktop app's PATH cannot find an NVM-installed CLI.
+# With no database (or an explicit binary override), use the CLI below.
 # --days 0 is today since local midnight. --days 7 is today and the six days before:
 # on opencode 2.2.5 its range.from is local midnight six days back (checked against
 # --days 0 and --days 6, which starts one day later), so N counts today.
@@ -13,6 +14,10 @@
 # object, or didn't finish within 10 s (TERM, then KILL a second later).
 # Override the binary with HERDR_USAGE_OPENCODE_BIN.
 
+db=${HERDR_USAGE_OPENCODE_DB:-${XDG_DATA_HOME:-$HOME/.local/share}/opencode/opencode.db}
+if [ -z "${HERDR_USAGE_OPENCODE_BIN:-}" ] && [ -f "$db" ]; then
+  exec sh "$(dirname "$0")/opencode-spend-db.sh" "$db"
+fi
 OC=$(command -v "${HERDR_USAGE_OPENCODE_BIN:-opencode}" 2>/dev/null) || exit 127
 
 dir=$(mktemp -d "${TMPDIR:-/tmp}/herdr-opencode-spend.XXXXXX") || exit 1
