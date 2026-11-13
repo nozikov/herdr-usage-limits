@@ -1,17 +1,19 @@
 #!/bin/sh
 # Prints one line of numbers about the session a process is running, and exits:
 #   claude:   tokens=N calls=N compactions=N [lastTrigger=auto lastPre=N lastPost=N]
-#   codex:    tokens=N window=N calls=N
+#   codex:    tokens=N window=N calls=N compactions=N (needs python3)
 #   opencode: tokens=N calls=N compactions=N [model=<id>]
 #   pi:       tokens=N calls=N [model=<id>]
 #
 # Usage: session.sh claude|codex|opencode|pi <pid of the agent in the terminal>
 #
-# Session files hold the whole conversation. Only numbers leave this script.
+# Session files hold the whole conversation. Only numbers leave this script,
+# except Codex's unbound session picker (IDs and titles, never message bodies).
 # Text in them is JSON-escaped, so \"type\" can't match the "type" looked for here.
 # Calls are the person's messages: Claude's "last-prompt" marker repeats within a turn.
 #
-# Exit: 0 = printed, 1 = no session found for that process (never a guess).
+# Exit: 0 = printed, 1 = no reading. Codex: 2 = JSON choices requiring an explicit selection.
+# Codex accepts optional thread ID and process identity, supplied by the mod after selection.
 # Claude's files follow CLAUDE_CONFIG_DIR, then %USERPROFILE%\.claude, then ~/.claude.
 # Pi's follow HERDR_USAGE_PI_HOME, then ~/.pi. A model id leaves only if it is [A-Za-z0-9._:/-]+.
 # OpenCode's database: HERDR_USAGE_OPENCODE_DB, then $XDG_DATA_HOME or ~/.local/share
@@ -93,37 +95,6 @@ claude() {
       }' "$file"
     exit $?
   done
-}
-
-# One app-server can hold several sessions open: the live one was written last.
-newest_rollout() {
-  lsof -nP -Fn -p "$1" 2>/dev/null | sed -n 's/^n//p' | grep '/sessions/.*/rollout-.*\.jsonl$' | {
-    newest=
-    while IFS= read -r f; do
-      if [ -z "$newest" ] || [ "$f" -nt "$newest" ]; then newest=$f; fi
-    done
-    printf '%s' "$newest"
-  }
-}
-
-# The terminal's codex runs a child app-server, and that holds the session open.
-codex() {
-  for kid in $(pgrep -P "$pid"); do
-    file=$(newest_rollout "$kid")
-    [ -n "$file" ] || continue
-    awk "$NUM"'
-      /"type":"task_started"/ { calls++ }
-      /"type":"token_count"/ {
-        u = index($0, "\"last_token_usage\":{")
-        if (u) { tokens = num(substr($0, u), "total_tokens"); window = num($0, "model_context_window") }
-      }
-      END {
-        if (!tokens) exit 1
-        printf "tokens=%d window=%d calls=%d\n", tokens, window, calls
-      }' "$file"
-    exit $?
-  done
-  exit 1
 }
 
 # ---- Agents that hold no session file open: the process is tied to its session
@@ -333,7 +304,7 @@ EOF
 
 case "$app" in
   claude) claude ;;
-  codex) codex ;;
+  codex) exec python3 -I "$(dirname "$0")/codex-session.py" "$pid" "${3:-}" "${4:-}" ;;
   opencode) opencode ;;
   pi) pi ;;
   *) exit 1 ;;

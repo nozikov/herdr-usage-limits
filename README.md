@@ -68,6 +68,18 @@ folded line or when the panel holds three providers or more.
 OpenCode and Pi get one line each: `Tokens today / 7d`, with both numbers. They don't
 fold. One you haven't used in 7 days isn't shown.
 
+Codex's session block includes context, calls and compactions. Embedded Codex and older
+child app-servers are detected automatically. If Codex uses a shared daemon, choose the
+conversation open in your terminal from **Choose Codex session** in the hover panel.
+Service subagents are excluded from detection; they do not make their parent's session
+ambiguous. The conversation list stays collapsed until you click the selection button.
+The choice expires when that terminal's Codex process restarts; **Change Codex session**
+lets you update it after `/new` or a switch to another conversation. A confirmed manual
+choice in Patchbay Chat is also recognised, unless you chose a session in this mod.
+Process-bound Patchbay choices survive interface reloads and are revalidated against
+Codex's OS process start time, so an idle conversation keeps its statistics.
+After compaction, context is hidden until Codex records fresh token usage.
+
 The block at the top is the session in the terminal you're focused on, and it changes
 when you switch terminals:
 
@@ -110,6 +122,10 @@ remembered across restarts.
 - **Old numbers look old.** Anything over 15 minutes old is dimmed.
 - **A passed reset shows `—`** until the next reading, never a made-up 0%.
 - **Codex's session log is only a fallback.** It's marked as a past reading, never as live.
+- **Codex sessions are identified explicitly.** An open rollout or writer-lock identifies
+  an embedded session. Multiple open rollouts are ambiguous; the mod offers a choice,
+  rather than following whichever conversation wrote last. Shared-daemon sessions also
+  require a choice. The folder only filters the list; it never selects a conversation.
 - **No session rather than the wrong one.** OpenCode and Pi don't say which session a terminal shows, so the mod ties them by folder and start time, and shows nothing when that isn't certain. With one copy of the agent in the folder, `/new` takes the block away. OpenCode's then stays away until you restart it, as it does after another OpenCode wrote in that folder. Pi's is away whenever another session in the folder was written after the one this Pi started with: after another Pi that has since quit wrote in that folder (it comes back at this Pi's next reply), and after `/new` (until Pi is restarted). Right after OpenCode compacts, the block isn't shown until its next reply, as OpenCode itself has no count then. Two gaps are left: an OpenCode that hasn't sent anything since it started can show a session another short-lived OpenCode wrote in that folder, until its own first message; and with several Pi in one folder, a terminal whose Pi did `/new` keeps showing that terminal's previous session, because nothing on disk tells that apart from another Pi writing.
 - **A failing token count says so too.** It keeps its last good numbers, dimmed.
 - **Narrow window?** Bars go first, then labels, then the time on calm windows. Percents and providers stay.
@@ -148,6 +164,11 @@ Give the block more weight if you want the bars to stay when a window gets tight
 - `sh`, your `claude` CLI and your `codex` CLI, each briefly, every 5 minutes. They use their own sign-ins and talk to Anthropic and OpenAI. The mod makes no network requests itself.
 - `opencode stats --days 0 --json` and `opencode stats --days 7 --json`, every 5 minutes, for OpenCode's tokens. Their reply holds counts, costs, model and tool names and dates, no message text; it reaches the mod whole, and the mod uses its token numbers only.
 - `hc`, to find the agent in the focused terminal, `lsof`, to find Codex's open session file, and `ps` and `lsof`, to find an OpenCode or Pi process's folder and start time. `ps` also lists your processes, to count the copies of that agent in the folder; their names and arguments stay on your machine.
+- `python3` (standard library only) for Codex session statistics: it inspects the
+  terminal process and its children, reads the identified rollout as JSON, and uses
+  Codex's `state_*.sqlite` index read-only for writer-lock lookup and the session picker.
+  The picker passes session IDs and titles to the mod; rollout message text stays in
+  the helper. `CODEX_HOME` and `CODEX_SQLITE_HOME` are respected.
 - It reads no token or credential file.
 - It reads the focused session's log (`~/.claude/projects/`, `~/.codex/sessions/`), which holds your conversation. `helpers/session.sh` passes on numbers only. `~/.codex/sessions/**/*.jsonl` is also the fallback for Codex's limits.
 - For OpenCode's session it reads OpenCode's database (`$XDG_DATA_HOME/opencode/opencode.db`, by default `~/.local/share/opencode/opencode.db`) with `sqlite3`, read-only. For Pi it reads Pi's session files (`~/.pi/agent/sessions/`): the focused session's, and those written in the last 8 days for the tokens. Both hold your conversation. `helpers/session.sh` and `helpers/pi-spend.sh` pass on only numbers (counts and times) and a model id. It never runs `pi`.

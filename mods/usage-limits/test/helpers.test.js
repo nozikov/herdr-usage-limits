@@ -124,7 +124,7 @@ test("session helper, codex: the file its app-server holds open, last usage and 
   copyFileSync(join(HERE, "fixtures", "codex-rollout.jsonl"), rollout);
   const r = session(["codex", "123"], { PATH: `${fakeTools(rollout)}:${process.env.PATH}` });
   assert.equal(r.status, 0);
-  assert.equal(r.stdout, "tokens=115225 window=475000 calls=2\n");
+  assert.equal(r.stdout, "tokens=115225 window=475000 calls=2 compactions=0\n");
 });
 
 test("session helper, codex: no open session file → exit 1, never a guess", () => {
@@ -132,7 +132,7 @@ test("session helper, codex: no open session file → exit 1, never a guess", ()
   assert.deepEqual([r.status, r.stdout], [1, ""]);
 });
 
-test("session helper, codex: with two files open, the one being written", () => {
+test("session helper, codex: two open files without an exact binding are ambiguous", () => {
   const day = join(mkdtempSync(join(tmpdir(), "ul-codex-")), "sessions", "2026", "11", "04");
   mkdirSync(day, { recursive: true });
   const old = join(day, "rollout-a.jsonl");
@@ -141,7 +141,7 @@ test("session helper, codex: with two files open, the one being written", () => 
   copyFileSync(join(HERE, "fixtures", "codex-rollout.jsonl"), live);
   utimesSync(old, 1000, 1000);
   const r = session(["codex", "123"], { PATH: `${fakeTools([old, live])}:${process.env.PATH}` });
-  assert.match(r.stdout, /^tokens=115225 /);
+  assert.deepEqual([r.status, r.stdout], [1, ""]);
 });
 
 // ---- session.sh pi ----

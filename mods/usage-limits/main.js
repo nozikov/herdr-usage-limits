@@ -9,7 +9,8 @@ import { exec, focused, theme, props, shared, setShared, appHome } from "herdr";
 import { PROVIDERS } from "./providers/index.js";
 import { barModel, cardModel, chooseDensity, hasLimits, limitsSettled, panelOnEnter, wanted } from "./lib/view.js";
 import { effectivePrefs, inPanel, isOnBar, isShown, spendOnBar, toggleFolded, toggleOnBar, togglePanel, toggleProvider, toggleShowBars, toggleShowResetTime, toggleSpendOnBar, toggleWindow } from "./lib/prefs.js";
-import { parseSession, sessionOnBar, sessionView } from "./lib/session.js";
+import { sessionOnBar, sessionView } from "./lib/session.js";
+import { KEY_BINDINGS, codexBinding, sessionReadResult } from "./lib/session-binding.js";
 import { nextState } from "./lib/state.js";
 import { errorReport } from "./lib/report.js";
 
@@ -22,7 +23,7 @@ const MISSING_EVERY = 60 * 60;    // s, not-installed providers
 const REFRESH_COOLDOWN = 30;      // s
 const SESSION_EVERY = 10 * 1000;   // ms, at most this often on hover
 const SPEND_TIMEOUT = 15 * 1000;   // ms, a spend helper is killed after this (pi-spend.sh has no deadline of its own)
-const SESSION_TIMEOUT = 15 * 1000; // ms, session.sh for OpenCode and Pi (ps, lsof, sqlite3) is killed after this
+const SESSION_TIMEOUT = 15 * 1000; // ms, session helpers are bounded even if process inspection hangs
 const AGENTS = { "claude-code": "claude", codex: "codex", opencode: "opencode", pi: "pi" }; // Herdr's app name → session.sh
 const BAR_W = 30;
 const PANEL_W = 340;
@@ -69,6 +70,10 @@ export default class UsageLimits extends View {
     this.session = null;   // { data: Session, title } or null
     this.sessionAt = 0;    // ms, last session read
     this.sessionBusy = false;
+    this.sessionChoices = null;
+    this.sessionChoosing = false;
+    this.sessionManual = false;
+    this.sessionRevision = 0;
     this.lastFetch = {};   // providerId → epoch s of last attempt
     this.busy = {};        // providerId → fetch in flight
     this.unwanted = {};    // providerId → true while on neither the bar nor the panel
@@ -133,41 +138,73 @@ export default class UsageLimits extends View {
   readSession(cx) {
     if (!this.sessionWanted(this.prefs())) {
       this.session = null;
+      this.sessionChoices = null;
       return;
     }
     if (this.sessionBusy) return; // a hung hc mustn't pile up; it re-reads below if focus moved
     const terminal = this.terminal;
+    const revision = this.sessionRevision;
     this.sessionAt = Date.now();
     if (!terminal) {
       this.session = null;
+      this.sessionChoices = null;
       return;
     }
     this.sessionBusy = true;
     cx.spawn(async (cx) => {
       let next = null;
+      let choices = null;
+      let manual = false;
       try {
         const info = JSON.parse((await exec("hc", ["get", terminal])).stdout);
         const app = AGENTS[info.status?.app];
         const pid = info.foreground?.pid;
         if (app && pid) {
-          const r = app === "opencode" || app === "pi"
-            ? await exec("sh", [`${appHome()}/mods/${MOD}/helpers/session.sh`, app, String(pid)], { timeout: SESSION_TIMEOUT })
-            : await exec("sh", [`${appHome()}/mods/${MOD}/helpers/session.sh`, app, String(pid)]);
-          const data = r.code === 0 ? parseSession(r.stdout, app) : null;
-          if (data) next = { data, title: (info.cwd ?? "").split("/").pop() };
+          const binding = app === "codex" ? codexBinding(shared(KEY_BINDINGS), terminal, pid, shared("patchbay.chat.bindings"), shared("patchbay.sessions")?.boot) : null;
+          const args = [`${appHome()}/mods/${MOD}/helpers/session.sh`, app, String(pid)];
+          if (binding) args.push(binding.id, binding.identity);
+          const r = await exec("sh", args, { timeout: SESSION_TIMEOUT });
+          const result = sessionReadResult(r, app, binding, pid, (info.cwd ?? "").split("/").pop());
+          next = result.session;
+          choices = result.choices;
+          manual = result.manual;
         }
       } catch {
         next = null;
       } finally {
         this.sessionBusy = false;
       }
-      if (terminal !== this.terminal) {
+      if (terminal !== this.terminal || revision !== this.sessionRevision) {
         this.readSession(cx); // focus moved on while this was reading
         return;
       }
       this.session = this.sessionWanted(this.prefs()) ? next : null; // hidden everywhere meanwhile: dropped
+      this.sessionChoices = this.sessionWanted(this.prefs()) ? choices : null;
+      this.sessionManual = manual;
       cx.notify();
     });
+  }
+
+  chooseSession(row, cx) {
+    const choices = this.sessionChoices;
+    if (!this.terminal || !choices?.choices.includes(row)) return;
+    setShared(KEY_BINDINGS, { ...(shared(KEY_BINDINGS) ?? {}), [this.terminal]: { pid: choices.pid, identity: choices.identity, id: row.id } });
+    this.sessionRevision++;
+    this.sessionChoices = null;
+    this.sessionChoosing = false;
+    this.readSession(cx);
+    cx.notify();
+  }
+
+  changeSession(cx) {
+    const bindings = { ...(shared(KEY_BINDINGS) ?? {}) };
+    delete bindings[this.terminal];
+    setShared(KEY_BINDINGS, bindings);
+    this.sessionRevision++;
+    this.session = null;
+    this.sessionManual = false;
+    this.readSession(cx);
+    cx.notify();
   }
 
   cooling() {
@@ -254,7 +291,7 @@ export default class UsageLimits extends View {
     const panel = cardModel(st, now(), PROVIDERS, prefs);
     const session = inPanel(prefs, "session") ? sessionView(this.session?.data, this.session?.title) : null;
     // With nothing to show (no CLI installed, or all of it taken out), settings are all there is.
-    const empty = panel.empty && !session;
+    const empty = panel.empty && !session && !(inPanel(prefs, "session") && (this.sessionChoices || this.sessionManual));
     if (empty) this.panel = "settings"; // so ticking a Panel box doesn't swap the view under the pointer
     const body = this.panel === "settings" || empty ? this.settings(!empty, t) : this.limits(panel, session, t);
     return root.child(HoverCard.new("ul-panel").anchor("bottom_right").open_delay(PANEL_OPEN_DELAY).close_delay(PANEL_CLOSE_DELAY)
@@ -366,6 +403,17 @@ export default class UsageLimits extends View {
       .child(div().text_size(11).text_color(t.dim).child(stats));
   }
 
+  sessionPicker(t) {
+    return v_flex().gap(5)
+      .child(div().font_semibold().child("This session"))
+      .child(div().id("ul-pick-session").text_size(11).text_color(t.dim).cursor_pointer()
+        .on_click((_e, cx) => { this.sessionChoosing = !this.sessionChoosing; cx.notify(); })
+        .child(this.sessionChoosing ? "Cancel" : "Choose Codex session…"))
+      .when(this.sessionChoosing, (el) => el.children(this.sessionChoices.choices.map((row) => div().id(`ul-session-${row.id}`).py(4).px(6).rounded(4)
+        .cursor_pointer().hover((s) => s.bg(t.hover)).on_click((_e, cx) => this.chooseSession(row, cx))
+        .child(div().truncate().child(row.title || row.id)))));
+  }
+
   iconButton(id, icon, label, enabled, onClick, t) {
     return div().id(id).size(24).rounded(5).flex().items_center().justify_center().tooltip(label)
       .when(enabled, (e) => e.cursor_pointer().hover((s) => s.bg(t.hover)).on_click((_e, cx) => onClick(cx)))
@@ -388,6 +436,9 @@ export default class UsageLimits extends View {
     const rule = () => div().h(1).bg(t.border).flex_none();
     const body = this.shell(t);
     if (session) body.child(this.sessionBlock(session, t)).child(rule());
+    if (inPanel(this.prefs(), "session") && this.sessionManual) body.child(div().id("ul-change-session").text_size(11).text_color(t.dim).cursor_pointer()
+      .on_click((_e, cx) => this.changeSession(cx)).child("Change Codex session"));
+    if (inPanel(this.prefs(), "session") && this.sessionChoices) body.child(this.sessionPicker(t)).child(rule());
     model.groups.forEach((g, i) => {
       if (i > 0) body.child(rule());
       body.child(g.kind === "spend" ? this.spendLine(g, t) : this.cardGroup(g, model.arrows, t));
@@ -493,12 +544,16 @@ export default class UsageLimits extends View {
   }
 
   render(cx) {
-    const terminal = focused()?.terminal ?? null;
+    const focus = focused();
+    const terminal = focus?.terminal ?? focus?.agent ?? null;
     const prefs = this.prefs();
     const sessionWanted = this.sessionWanted(prefs);
     if (terminal !== this.terminal) {
       this.terminal = terminal;
       this.session = null;
+      this.sessionChoices = null;
+      this.sessionChoosing = false;
+      this.sessionManual = false;
       this.readSession(cx);
     } else if (sessionWanted && !this.sessionWas) {
       this.readSession(cx); // just put back in the panel or on the bar: read at once

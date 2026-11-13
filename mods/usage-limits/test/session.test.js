@@ -55,6 +55,12 @@ test("sessionView: Codex has no compaction line rather than a false 0", () => {
   assert.deepEqual([v.compactions, v.last], [null, null]);
 });
 
+test("sessionView: Codex's measured compactions appear in the panel and bar", () => {
+  const s = parseSession("tokens=12345 window=475000 calls=8 compactions=2", "codex");
+  assert.equal(sessionView(s, "project").compactions, "2 compactions");
+  assert.deepEqual(sessionOnBar(s, { sessionOnBar: ["compactions"] }), [{ id: "compactions", text: "▼ 2", level: "ok" }]);
+});
+
 test("sessionView: no session means no block", () => {
   assert.equal(sessionView(null, "x"), null);
 });
