@@ -49,6 +49,24 @@ test("codex helper: bogus bin and no sessions dir → exit 127", () => {
   assert.equal(r.stdout, "");
 });
 
+const FAKE_CODEX = join(HERE, "fake-cli", "codex");
+
+test("codex helper: app-server answers through the pipe → prints the id 2 line, exits by itself", () => {
+  const r = run("codex-limits.sh", { HERDR_USAGE_CODEX_BIN: FAKE_CODEX, CODEX_HOME: mkdtempSync(join(tmpdir(), "codex-home-")) });
+  assert.equal(r.status, 0);
+  assert.equal(JSON.parse(r.stdout.trim()).id, 2);
+  assert.ok(r.ms < 5000, `took ${r.ms} ms`);
+  assert.equal(alive("fake-cli/codex"), false, "fake app-server left running");
+});
+
+test("codex helper: app-server that never answers → exit 1 within 20 s and no leftover process", { timeout: 30000 }, () => {
+  const r = run("codex-limits.sh", { HERDR_USAGE_CODEX_BIN: FAKE_CODEX, HANG: "1", CODEX_HOME: mkdtempSync(join(tmpdir(), "codex-home-")) });
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, "");
+  assert.ok(r.ms < 20000, `took ${r.ms} ms`);
+  assert.equal(alive("sleep 60"), false, "hung app-server left running");
+});
+
 test("codex helper: codex missing but session logs exist → exit 127 (not a stale 'ok')", () => {
   const home = mkdtempSync(join(tmpdir(), "codex-home-"));
   mkdirSync(join(home, "sessions", "2026", "11", "04"), { recursive: true });

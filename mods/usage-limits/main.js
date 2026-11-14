@@ -38,6 +38,25 @@ const PANEL_CLOSE_DELAY = 300;      // ms, lets the pointer cross from the bar t
 
 const now = () => Math.floor(Date.now() / 1000);
 
+// Windows: Git's installer puts git on PATH but usually not its sh. When "sh" can't
+// start, git says where it lives (…/Git/mingw64/libexec/git-core → …/Git/bin/sh.exe).
+let SH = "sh";
+const sh = (bin, args, opts) => (opts ? exec(bin, args, opts) : exec(bin, args));
+async function runSh(args, opts) {
+  try {
+    return await sh(SH, args, opts);
+  } catch (e) {
+    if (SH !== "sh" || !String(e?.message ?? e).includes("cannot run")) throw e; // not a timeout
+    const core = (await exec("git", ["--exec-path"]).catch(() => null))?.stdout.trim() ?? "";
+    const root = core.replace(/\/[^/]+\/libexec\/git-core$/, "");
+    if (!root || root === core) throw e;
+    const r = await sh(`${root}/bin/sh.exe`, args, opts).catch(() => null);
+    if (!r) throw e;
+    SH = `${root}/bin/sh.exe`;
+    return r;
+  }
+}
+
 // A provider's icon. A tinted one (a one-color glyph) is drawn in the given color, like text,
 // so it shows on a dark and a light theme alike; any other is the picture as it is.
 const TINTED = new Set(PROVIDERS.filter((p) => p.tint).map((p) => p.id));
@@ -109,8 +128,8 @@ export default class UsageLimits extends View {
       const spend = p.kind === "spend";
       try {
         const r = spend
-          ? await exec("sh", [`${appHome()}/mods/${MOD}/${p.helper}`], { timeout: SPEND_TIMEOUT })
-          : await exec("sh", [`${appHome()}/mods/${MOD}/${p.helper}`]);
+          ? await runSh([`${appHome()}/mods/${MOD}/${p.helper}`], { timeout: SPEND_TIMEOUT })
+          : await runSh([`${appHome()}/mods/${MOD}/${p.helper}`]);
         if (spend && r.code !== 0 && r.code !== 127) {
           // A failed spend helper prints nothing, which would parse as "0 tokens": say it failed.
           next = nextState(prev, errorReport(p.helper, `Couldn't count ${p.name} tokens`, now()), true);
@@ -163,7 +182,7 @@ export default class UsageLimits extends View {
           const binding = app === "codex" ? codexBinding(shared(KEY_BINDINGS), terminal, pid, shared("patchbay.chat.bindings"), shared("patchbay.sessions")?.boot) : null;
           const args = [`${appHome()}/mods/${MOD}/helpers/session.sh`, app, String(pid)];
           if (binding) args.push(binding.id, binding.identity);
-          const r = await exec("sh", args, { timeout: SESSION_TIMEOUT });
+          const r = await runSh(args, { timeout: SESSION_TIMEOUT });
           const result = sessionReadResult(r, app, binding, pid, (info.cwd ?? "").split("/").pop());
           next = result.session;
           choices = result.choices;
