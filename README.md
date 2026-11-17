@@ -27,13 +27,15 @@ See how much Claude Code and Codex you have left, right in Herdr's status bar:
 - **Everything on hover:** rest the pointer on the limits for the full picture.
 - **Your current session:** how full the context is, how many messages you've sent, how many times it was compacted.
 - **OpenCode and Pi:** the tokens they used today and over the last 7 days. They have no limits to show.
+- **OpenCode Go:** your 5-hour, weekly and monthly allowance, with a bar and a percent each.
 
 OpenCode session statistics support both legacy and current SQLite storage automatically.
 Both appear as the same **OpenCode** block, with the same settings and counters; there is
 no version selector. Schema adapters handle message and compaction differences internally.
 
-It asks your own `claude` and `codex` CLIs, reads OpenCode's local database and Pi's
-session files, so there is no API key to add and no model usage to pay for.
+It asks your own `claude` and `codex` CLIs, asks OpenCode's usage endpoint for Go, reads
+OpenCode's local database and Pi's session files, so there is no model usage to pay for.
+The only key it touches is the OpenCode Go key OpenCode or Pi already stores.
 
 ## Read the bar
 
@@ -75,6 +77,11 @@ folded line or when the panel holds three providers or more.
 OpenCode and Pi get one line each: `Tokens today / 7d`, with both numbers. They don't
 fold. One you haven't used in 7 days isn't shown.
 
+**OpenCode Go** is a separate block: its rolling 5-hour window, the weekly window that
+resets Monday 00:00 UTC, and the monthly allowance, each with the percent OpenCode
+reports. When no key is found in OpenCode's or Pi's `auth.json`, or the key's workspace
+doesn't subscribe to Go, the block is left out rather than guessed at.
+
 Codex's session block includes context, calls and compactions. Embedded Codex and older
 child app-servers are detected automatically. If Codex uses a shared daemon, choose the
 conversation open in your terminal from **Choose Codex session** in the hover panel.
@@ -110,6 +117,7 @@ is out of the panel and none of its numbers is on the bar. Every choice, and eve
 remembered across restarts.
 
 - **Claude, Codex and their limits** are on by default. Untick what you don't watch.
+- **OpenCode Go** is on by default when a key is found: rolling 5-hour, weekly and monthly, each from OpenCode's own usage endpoint.
 - **OpenCode and Pi** put today's tokens on the bar: `today 240k`. They're off the bar by default, unless no provider with limits has any numbers; then they're on.
 - **Always show time to reset** adds the time to every limit, green ones too.
 - **Show bars** keeps a bar beside each limit. Untick it for numbers only.
@@ -145,8 +153,9 @@ Ask your Herdr agent to add this repository:
 Add the Herdr mod github.com/nozikov/herdr-usage-limits to my status bar
 ```
 
-Or by hand, on macOS or Linux, with the `claude` or `codex` CLI signed in, or OpenCode
-or Pi installed (OpenCode's session block also needs `sqlite3`):
+Or by hand, on macOS or Linux, with the `claude` or `codex` CLI signed in, OpenCode
+or Pi installed (OpenCode's session block also needs `sqlite3`), or an OpenCode Go key
+in OpenCode's or Pi's `auth.json`:
 
 ```sh
 git clone https://github.com/nozikov/herdr-usage-limits.git
@@ -170,7 +179,14 @@ If your status row is drawn without lines, `"props": { "border": false }` in the
 
 ## What it runs
 
-- `sh`, your `claude` CLI and your `codex` CLI, each briefly, every 5 minutes. They use their own sign-ins and talk to Anthropic and OpenAI. The mod makes no network requests itself.
+- `sh`, your `claude` CLI and your `codex` CLI, each briefly, every 5 minutes. They use their own sign-ins and talk to Anthropic and OpenAI. Apart from the OpenCode Go request below, the mod makes no network requests itself.
+- `curl`, once every 5 minutes, to `https://opencode.ai/zen/go/v1/usage`, with the
+  personal API key from `$HERDR_USAGE_OPENCODE_GO_KEY`, or from the `opencode-go` (or
+  `opencode`) entry of `~/.local/share/opencode/auth.json`, `~/.config/opencode/auth.json`
+  or `~/.pi/agent/auth.json`. OAuth access tokens are not used, as the mod can't refresh
+  them. `HERDR_USAGE_OPENCODE_GO_AUTH` picks another file and `HERDR_USAGE_OPENCODE_GO_ORG`
+  adds a workspace header. The key goes to curl on stdin and stays out of `ps` and disk.
+  This is the only request the mod makes itself; only percentages and reset times come back.
 - OpenCode's local database, read-only, for today's and seven calendar days' tokens.
   This works for both storage formats, including OpenCode installed through NVM and
   legacy CLIs without `stats --json`. Only numeric totals reach the mod. If no database
@@ -182,7 +198,7 @@ If your status row is drawn without lines, `"props": { "border": false }` in the
   Codex's `state_*.sqlite` index read-only for writer-lock lookup and the session picker.
   The picker passes session IDs and titles to the mod; rollout message text stays in
   the helper. `CODEX_HOME` and `CODEX_SQLITE_HOME` are respected.
-- It reads no token or credential file.
+- It reads no token or credential file other than the OpenCode Go key above.
 - It reads the focused session's log (`~/.claude/projects/`, `~/.codex/sessions/`), which holds your conversation. `helpers/session.sh` passes on numbers only. `~/.codex/sessions/**/*.jsonl` is also the fallback for Codex's limits.
 - For OpenCode's session it reads OpenCode's database (`$XDG_DATA_HOME/opencode/opencode.db`, by default `~/.local/share/opencode/opencode.db`) with `sqlite3`, read-only. For Pi it reads Pi's session files (`~/.pi/agent/sessions/`): the focused session's, and those written in the last 8 days for the tokens. Both hold your conversation. `helpers/session.sh` and `helpers/pi-spend.sh` pass on only numbers (counts and times) and a model id. It never runs `pi`.
 

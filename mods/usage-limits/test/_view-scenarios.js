@@ -4,11 +4,13 @@ import { read } from "./_util.js";
 
 export const NOW = Date.UTC(2026, 10, 4, 8, 0, 0) / 1000;
 const ok = (p, file, at = NOW) => ({ ...p.parse(read(file), at), observedAt: at });
+const error = (message) => ({ status: "error", message, plan: null, observedAt: NOW, source: "x", windows: [] });
+const gone = { report: null, lastGood: null, installed: false };
 const fresh = () => ({
   claude: { report: ok(claude, "claude-get-usage.max.json"), lastGood: ok(claude, "claude-get-usage.max.json"), installed: true },
   codex: { report: ok(codex, "codex-app-server.plus.json"), lastGood: ok(codex, "codex-app-server.plus.json"), installed: true },
+  "opencode-go": gone,
 });
-const error = (message) => ({ status: "error", message, plan: null, observedAt: NOW, source: "x", windows: [] });
 
 export const scenarios = {
   fresh,
@@ -24,8 +26,8 @@ export const scenarios = {
     s.codex.report = { ...s.codex.report, observedAt: NOW - 901 };
     return s;
   },
-  loadingAndMissing: () => ({ claude: { report: null, lastGood: null, installed: null }, codex: { report: null, lastGood: null, installed: false } }),
-  noState: () => ({}),
+  loadingAndMissing: () => ({ claude: { report: null, lastGood: null, installed: null }, codex: { report: null, lastGood: null, installed: false }, "opencode-go": gone }),
+  noState: () => ({ "opencode-go": gone }),
 };
 
 export const extraScenarios = {
