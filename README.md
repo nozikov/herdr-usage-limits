@@ -10,6 +10,8 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8E929A?style=flat-square&labelColor=1F1F22" alt="MIT license"></a>
   <a href="https://herdr.dev/mods"><img src="https://img.shields.io/badge/herdr-mod-D97757?style=flat-square&labelColor=1F1F22" alt="Herdr mod"></a>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-8E929A?style=flat-square&labelColor=1F1F22" alt="macOS and Linux">
+  <a href="https://github.com/nozikov/herdr-usage-limits/actions/workflows/macos.yml"><img src="https://img.shields.io/github/actions/workflow/status/nozikov/herdr-usage-limits/macos.yml?branch=main&event=push&label=macOS&style=flat-square&labelColor=1F1F22" alt="Tests and quality checks on macOS"></a>
+  <a href="https://github.com/nozikov/herdr-usage-limits/actions/workflows/linux.yml"><img src="https://img.shields.io/github/actions/workflow/status/nozikov/herdr-usage-limits/linux.yml?branch=main&event=push&label=Linux&style=flat-square&labelColor=1F1F22" alt="Tests and quality checks on Linux"></a>
   <img src="https://img.shields.io/badge/reads-no%20tokens-7FB77E?style=flat-square&labelColor=1F1F22" alt="Reads no tokens">
 </p>
 

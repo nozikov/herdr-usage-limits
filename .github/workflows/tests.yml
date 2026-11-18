@@ -1,26 +1,20 @@
-name: CI
+name: tests
 
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
 
 permissions:
   contents: read
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  test:
-    name: tests (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+  npm-test:
+    name: npm test
+    runs-on: ${{ inputs.os }}
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

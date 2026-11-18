@@ -257,9 +257,10 @@ on the bar and in the panel. It never reads a token.
   eslint (size and complexity limits, no classes or `this` outside the View,
   the layers), jscpd (no copied code), shellcheck (POSIX `sh`), no comments
   in JS, shell, Python, SQL or awk, file sizes. `npm install` first.
-- CI (`.github/workflows/ci.yml`) runs the same `npm test` on Linux and macOS
-  for every pull request and every push to `main`; a pull request merges only
-  when both pass.
+- CI runs the same `npm test` (`.github/workflows/tests.yml`) on Linux and
+  macOS, one workflow each (`linux.yml`, `macos.yml`, so each has its README
+  badge), for every pull request and every push to `main`; a pull request
+  merges only when both pass.
 - `mods/usage-limits/test/main.test.js` runs the real `main.js` over host
   stand-ins and compares what it draws and does, click by click, with
   `test/fixtures/main-snapshot.json`; `UPDATE_SNAPSHOT=1` rewrites it after a
