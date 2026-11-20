@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MOD, HERE } from "./_util.js";
@@ -524,9 +524,11 @@ sqliteTest("opencode session: a folder with a space, and one with a colon, find 
   }
 });
 
+const PID_ABOVE_ANY_PID_MAX = "4194305";
+
 function lsofCwdAsCLocalePrintsIt(printed) {
   const dir = mkdtempSync(join(tmpdir(), "ul-bin-"));
-  writeFileSync(join(dir, "lsof"), `#!/bin/sh\nprintf 'p%s\\nfcwd\\nn%s\\n' 4242 '${printed}'\n`, { mode: 0o755 });
+  writeFileSync(join(dir, "lsof"), `#!/bin/sh\nprintf 'p%s\\nfcwd\\nn%s\\n' ${PID_ABOVE_ANY_PID_MAX} '${printed}'\n`, { mode: 0o755 });
   return dir;
 }
 const lsofEnv = (env, printed) => {
@@ -534,24 +536,21 @@ const lsofEnv = (env, printed) => {
   delete e.HERDR_USAGE_PROC_CWD;
   return e;
 };
-const NO_PROC = existsSync("/proc/4242") ? { skip: "/proc/4242 exists here" } : {};
-
-test("pi session: a non-ASCII folder lsof prints as \\xNN escapes is found", NO_PROC, () => {
+test("pi session: a non-ASCII folder lsof prints as \\xNN escapes is found", () => {
   const h = piHomeAt("/home/demo/проект", { "2026-11-02T10-00-00-000Z_x.jsonl": piReply(654) });
   const printed = "/home/demo/\\xd0\\xbf\\xd1\\x80\\xd0\\xbe\\xd0\\xb5\\xd0\\xba\\xd1\\x82";
-  assert.equal(runSession("pi", "4242", lsofEnv(piEnv(h), printed)).stdout, "tokens=654 calls=0 model=demo-model\n");
+  assert.equal(runSession("pi", PID_ABOVE_ANY_PID_MAX, lsofEnv(piEnv(h), printed)).stdout, "tokens=654 calls=0 model=demo-model\n");
 });
 
 sqliteTest("opencode session: a folder with a backslash and a percent sign, as lsof prints them, is found", () => {
-  if (existsSync("/proc/4242")) return;
   const dir = "/home/demo/a\\b 100%d";
   const db = ocDb([{ ...OC_OWN, dir }, { ...OC_ELSEWHERE, dir: "/home/demo/a\\\\b 100%d" }]);
-  assert.equal(runSession("opencode", "4242", lsofEnv(ocEnv(db), "/home/demo/a\\\\b 100%d")).stdout, "tokens=17493 calls=3 compactions=0 model=demo-model\n");
+  assert.equal(runSession("opencode", PID_ABOVE_ANY_PID_MAX, lsofEnv(ocEnv(db), "/home/demo/a\\\\b 100%d")).stdout, "tokens=17493 calls=3 compactions=0 model=demo-model\n");
 });
 
-test("pi session: an escape lsof uses that can't be undone (a control character) → nothing", NO_PROC, () => {
+test("pi session: an escape lsof uses that can't be undone (a control character) → nothing", () => {
   const h = piHomeAt("/home/demo/a\\nb", { "2026-11-02T10-00-00-000Z_x.jsonl": piReply(654) });
-  const r = runSession("pi", "4242", lsofEnv(piEnv(h), "/home/demo/a\\nb"));
+  const r = runSession("pi", PID_ABOVE_ANY_PID_MAX, lsofEnv(piEnv(h), "/home/demo/a\\nb"));
   assert.deepEqual([r.status, r.stdout], [1, ""]);
 });
 
