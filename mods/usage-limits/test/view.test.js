@@ -195,7 +195,7 @@ test("cardModel: not installed providers are left out", () => {
 
 test("cardModel: nothing installed means no limits to show", () => {
   const gone = { report: null, lastGood: null, installed: false };
-  assert.equal(cardModel({ claude: gone, codex: gone }, NOW).empty, true);
+  assert.equal(cardModel({ claude: gone, codex: gone, "opencode-go": gone }, NOW).empty, true);
 });
 
 test("cardModel: a failing provider says why and keeps its last reading, dimmed, with its age", () => {

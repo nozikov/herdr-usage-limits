@@ -29,6 +29,7 @@ const ALL_OK = {
   "claude-usage.sh": () => ok(read("claude-get-usage.max.json")),
   "codex-limits.sh": () => ok(read("codex-app-server.plus.json")),
   "opencode-spend.sh": () => ok(opencodeStats()),
+  "opencode-go.sh": () => ok(read("opencode-go-usage.json")),
   "pi-spend.sh": () => ok(piSpend),
 };
 
@@ -122,6 +123,7 @@ const SCENARIOS = {
         "claude-usage.sh": () => ok(read("claude-get-usage.error.json")),
         "codex-limits.sh": missing,
         "opencode-spend.sh": failed,
+        "opencode-go.sh": missing,
         "pi-spend.sh": () => Promise.reject(new Error("killed")),
       },
     });
@@ -153,7 +155,7 @@ const SCENARIOS = {
   },
 
   async nothingInstalled() {
-    const s = session({ helpers: { "claude-usage.sh": missing, "codex-limits.sh": missing, "opencode-spend.sh": missing, "pi-spend.sh": missing } });
+    const s = session({ helpers: { "claude-usage.sh": missing, "codex-limits.sh": missing, "opencode-spend.sh": missing, "opencode-go.sh": missing, "pi-spend.sh": missing } });
     s.start();
     await s.frame("first render");
     await s.frame("again");
@@ -165,7 +167,7 @@ const SCENARIOS = {
   async spendOnly() {
     const opencodeSession = "tokens=30000 window=100000 calls=4 compactions=0 model=demo-model";
     const s = session({
-      helpers: { ...ALL_OK, "claude-usage.sh": missing, "codex-limits.sh": missing, "session.sh": () => ok(opencodeSession) },
+      helpers: { ...ALL_OK, "claude-usage.sh": missing, "codex-limits.sh": missing, "opencode-go.sh": missing, "session.sh": () => ok(opencodeSession) },
       terminal: { status: { app: "opencode" }, foreground: { pid: 9 }, cwd: "/work/spend" },
       props: { hidden: ["codex"], sessionOnBar: ["context"] },
     });

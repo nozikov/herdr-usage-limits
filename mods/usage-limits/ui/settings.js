@@ -8,7 +8,7 @@ import { settingsRows } from "../lib/settings.js";
 const PANEL_BOX_W = 40;
 const WINDOW_INDENT = 21;
 const SESSION_NUMBERS = ["Context", "Calls", "Compactions"];
-const DATA_NOTE = "Data: claude, codex, opencode and pi, numbers from their session logs.";
+const DATA_NOTE = "Data: claude, codex, opencode, opencode go and pi, from their local files and OpenCode's usage endpoint.";
 
 function checkBox(on, t) {
   return div().size(13).rounded(3).border(1).border_color(on ? t.accent : t.input).bg(on ? t.accent : t.popover)
