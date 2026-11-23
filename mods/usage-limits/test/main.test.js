@@ -149,7 +149,7 @@ const SCENARIOS = {
   async codexSessionChosenByHand() {
     const choices = JSON.stringify({ pid: 77, identity: "started:1", choices: [{ id: CHOICE, title: "Fix the bar" }, { id: OTHER_CHOICE, title: "" }] });
     const sessionHelper = (args) => (args.length > 3 ? ok("tokens=9000 calls=3") : { code: 2, stdout: choices });
-    const s = session({ helpers: { ...ALL_OK, "session.sh": sessionHelper }, terminal: { status: { app: "codex" }, foreground: { pid: 77 }, cwd: "/work/other" }, props: { sessionOnBar: ["calls"] } });
+    const s = session({ helpers: { ...ALL_OK, "session.sh": sessionHelper }, terminal: { status: { app: "codex" }, foreground: { pid: 77 }, cwd: "/work/other" }, props: { sessionOnBar: ["context", "calls"] } });
     s.start();
     await s.frame("first render");
     await s.frame("choices read");

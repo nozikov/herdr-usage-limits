@@ -121277,6 +121277,57 @@
              ],
              "children": [
               {
+               "kind": "div",
+               "args": [],
+               "style": [
+                [
+                 "text_color",
+                 "theme.dim"
+                ],
+                [
+                 "text_size",
+                 10.5
+                ]
+               ],
+               "children": [
+                "ctx"
+               ]
+              },
+              {
+               "kind": "div",
+               "args": [],
+               "style": [
+                [
+                 "text_color",
+                 "theme.foreground"
+                ],
+                [
+                 "whitespace_nowrap"
+                ]
+               ],
+               "children": [
+                "9k"
+               ]
+              }
+             ]
+            },
+            {
+             "kind": "h_flex",
+             "args": [],
+             "style": [
+              [
+               "flex_none"
+              ],
+              [
+               "gap",
+               5
+              ],
+              [
+               "items_center"
+              ]
+             ],
+             "children": [
+              {
                "kind": "svg",
                "args": [
                 "mods/usage-limits/icons/calls.svg"
@@ -125805,6 +125856,57 @@
             ]
            ],
            "children": [
+            {
+             "kind": "h_flex",
+             "args": [],
+             "style": [
+              [
+               "flex_none"
+              ],
+              [
+               "gap",
+               5
+              ],
+              [
+               "items_center"
+              ]
+             ],
+             "children": [
+              {
+               "kind": "div",
+               "args": [],
+               "style": [
+                [
+                 "text_color",
+                 "theme.dim"
+                ],
+                [
+                 "text_size",
+                 10.5
+                ]
+               ],
+               "children": [
+                "ctx"
+               ]
+              },
+              {
+               "kind": "div",
+               "args": [],
+               "style": [
+                [
+                 "text_color",
+                 "theme.foreground"
+                ],
+                [
+                 "whitespace_nowrap"
+                ]
+               ],
+               "children": [
+                "9k"
+               ]
+              }
+             ]
+            },
             {
              "kind": "h_flex",
              "args": [],
