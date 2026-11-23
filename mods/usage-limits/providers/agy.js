@@ -35,18 +35,17 @@ function resetOf(b, at) {
   return Number.isFinite(inSeconds) && inSeconds > 0 ? at + inSeconds : null;
 }
 
-function windowFrom(key, b, at, now) {
+function windowFrom(key, b, at) {
   const { group, span } = splitKey(key);
   const known = SPANS[span] ?? { short: span, long: span, durationSec: null };
   const name = groupName(group);
   const resetsAt = resetOf(b, at);
-  const resetSinceSaved = resetsAt != null && resetsAt <= now;
   return makeWindow({
     id: key,
     short: name ? `${name} ${known.short}` : known.short,
     long: name ? `${known.long} · ${name}` : known.long,
-    percent: resetSinceSaved ? 0 : usedPercent(b),
-    resetsAt: resetSinceSaved ? null : resetsAt,
+    percent: usedPercent(b),
+    resetsAt,
     durationSec: known.durationSec,
     offBarByDefault: group === THIRD_PARTY,
   });
@@ -67,7 +66,7 @@ export function parse(text, now) {
   const windows = Object.keys(saved.quota)
     .filter((key) => hasReading(saved.quota[key]))
     .sort(byRank)
-    .map((key) => windowFrom(key, saved.quota[key], at, now));
+    .map((key) => windowFrom(key, saved.quota[key], at));
   if (windows.length === 0) return unavailableReport(SOURCE, NO_LIMITS, now);
   return okReport(SOURCE, now, windows, planOf(saved.plan), at);
 }

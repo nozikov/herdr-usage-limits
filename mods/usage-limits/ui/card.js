@@ -6,8 +6,8 @@ const PANEL_BAR_W = 110;
 const FOLDED_BAR_W = 44;
 const THIS_SESSION = "this session";
 
-const thisSession = (t) => h_flex().gap(4).items_center().flex_none().text_size(10.5).text_color(t.accent)
-  .child(activeAccountDot(t)).child(THIS_SESSION);
+const thisSession = (folded, t) => h_flex().gap(4).items_center().flex_none().text_size(10.5).text_color(t.accent)
+  .child(activeAccountDot(t)).when(!folded, (e) => e.child(THIS_SESSION));
 
 function cardRow(r, providerId, t) {
   return v_flex().gap(3)
@@ -46,7 +46,7 @@ function header(g, arrows, panel) {
     .child(providerIcon(id, g.icon, t.foreground))
     .child(div().flex_none().font_semibold().child(g.name))
     .when(g.plan != null, (e) => e.child(div().flex_none().px(5).rounded(4).bg(t.raised).text_size(10).text_color(t.accent).child(g.plan)))
-    .when(g.active === true, (e) => e.child(thisSession(t)))
+    .when(g.active === true, (e) => e.child(thisSession(g.folded, t)))
     .when(g.folded || arrows || panel.hovered === id, (e) => e.child(svg(modIcon(arrow)).size(12).text_color(t.dim)));
 }
 
@@ -62,7 +62,7 @@ function groupWithoutSummary(g, head, panel) {
   const { t } = panel;
   if (g.folded && g.failed) return v_flex().gap(8).child(head.child(failure(g.status, t)));
   head.child(div().flex_1())
-    .child(div().min_w(0).truncate().text_size(11).text_color(g.failed ? levelColor("hot", t) : t.dim).child(g.status));
+    .when(g.failed || g.active !== true, (e) => e.child(div().min_w(0).truncate().text_size(11).text_color(g.failed ? levelColor("hot", t) : t.dim).child(g.status)));
   if (g.folded) return v_flex().gap(8).child(head);
   return v_flex().gap(8).child(head).children(groupBody(g, t));
 }

@@ -490,9 +490,8 @@ on the bar and in the panel. It never reads a token.
   for another agent.
 - agy gives its quota to nothing but its status line command, so the numbers
   are as old as the last line agy drew (shown by `observedAt`, dimmed after
-  15 minutes). A bucket whose reset has passed since then shows 0% and no
-  reset, not `—`: that window has reset and nothing was used in it through
-  agy, or agy would have drawn a newer line. Unknown to the mod for now: other buckets
+  15 minutes). A bucket whose reset has passed since then shows `—`, as any
+  provider's does: the mod doesn't guess a 0%. Unknown to the mod for now: other buckets
   than these four, and whether agy ever sends `reset_in_seconds` without
   `reset_time`. The stdin shape (`quota.<bucket>.remaining_fraction`,
   `reset_time`, `reset_in_seconds`, `plan_tier`) is from the bilipp fork,
