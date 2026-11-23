@@ -15,9 +15,35 @@ home_where_claude_keeps_its_files() {
   printf '%s' "$home"
 }
 
+expanded_home() {
+  case $1 in
+    \~) printf '%s' "$HOME" ;;
+    \~/*) printf '%s/%s' "$HOME" "${1#\~/}" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+account_holding_the_session() {
+  place=0
+  for d in "$@"; do
+    place=$((place + 1))
+    d=$(expanded_home "$d")
+    if [ -f "$d/sessions/$pid.json" ]; then
+      dir=$d
+      echo "account=$place"
+      return 0
+    fi
+  done
+  exit "$NO_READING"
+}
+
 claude() {
-  dir=${CLAUDE_CONFIG_DIR:-$(home_where_claude_keeps_its_files)/.claude}
-  [ -f "$dir/sessions/$pid.json" ] || exit "$NO_READING"
+  if [ $# -gt 0 ]; then
+    account_holding_the_session "$@"
+  else
+    dir=${CLAUDE_CONFIG_DIR:-$(home_where_claude_keeps_its_files)/.claude}
+    [ -f "$dir/sessions/$pid.json" ] || exit "$NO_READING"
+  fi
   id=$(sed -n 's/.*"sessionId":"\([^"]*\)".*/\1/p' "$dir/sessions/$pid.json")
   case "$id" in '' | *[!0-9a-zA-Z-]*) exit "$NO_READING" ;; esac
   for file in "$dir"/projects/*/"$id".jsonl; do
@@ -89,7 +115,7 @@ opencode() {
 }
 
 case "$app" in
-  claude) claude ;;
+  claude) shift 2; claude "$@" ;;
   codex) exec python3 -I "$here/codex-session.py" "$pid" "${3:-}" "${4:-}" ;;
   opencode) opencode ;;
   pi) pi ;;

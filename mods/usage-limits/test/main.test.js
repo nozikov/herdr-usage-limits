@@ -78,20 +78,24 @@ function session({ helpers, terminal = null, shared = {}, props = null }) {
   return { cx, view, frames, frame, fire, press, start: () => view.init({}, cx) };
 }
 
+async function throughWidthsToSettings(s, widths) {
+  for (const width of widths) {
+    await s.fire("root", "on_size_change", { width, height: 24 });
+    await s.frame(`width ${width}`);
+  }
+  await s.fire("ul-content", "on_hover", true);
+  await s.frame("hovered");
+  await s.press("ul-settings");
+  await s.frame("settings");
+}
+
 const SCENARIOS = {
   async everyProviderAnswers() {
     const s = session({ helpers: { ...ALL_OK, "session.sh": () => ok(claudeSession) }, terminal: { status: { app: "claude-code" }, foreground: { pid: 41 }, cwd: "/work/demo" } });
     s.start();
     await s.frame("first render");
     await s.frame("session read");
-    for (const width of [2000, 420, 260, 120]) {
-      await s.fire("root", "on_size_change", { width, height: 24 });
-      await s.frame(`width ${width}`);
-    }
-    await s.fire("ul-content", "on_hover", true);
-    await s.frame("hovered");
-    await s.press("ul-settings");
-    await s.frame("settings");
+    await throughWidthsToSettings(s, [2000, 420, 260, 120]);
     for (const id of ["p-codex-bar", "w-claude-weekly_all", "s-context", "s-calls", "s-compactions"]) {
       await s.press(id);
       await s.frame(`toggled ${id}`);
@@ -187,6 +191,26 @@ const SCENARIOS = {
     await s.frame("settings");
     await s.press("p-pi-bar");
     await s.frame("pi off the bar");
+    return s.frames;
+  },
+
+  async twoClaudeAccounts() {
+    const accounts = [{ configDir: "~/.claude" }, { configDir: "~/.claude-work", name: "Claude Work" }];
+    const usage = (args) => ok(read(args[1] === "~/.claude-work" ? "claude-get-usage.legacy.json" : "claude-get-usage.max.json"));
+    const sessionHelper = (args) => (args.length > 3 ? ok(`account=2\n${claudeSession}`) : failed());
+    const s = session({
+      helpers: { ...ALL_OK, "claude-usage.sh": usage, "session.sh": sessionHelper },
+      terminal: { status: { app: "claude-code" }, foreground: { pid: 41 }, cwd: "/work/demo" },
+      props: { claudeAccounts: accounts },
+    });
+    s.start();
+    await s.frame("first render");
+    await s.frame("session read: the work account runs it");
+    await throughWidthsToSettings(s, [2000, 420, 120]);
+    await s.press("panel-session");
+    await s.press("ul-back");
+    s.cx.timers[0][1](s.cx);
+    await s.frame("session out of the panel, none of it on the bar: the account still marked");
     return s.frames;
   },
 };

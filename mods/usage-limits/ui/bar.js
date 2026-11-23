@@ -1,13 +1,23 @@
 import { div, svg } from "gpui-kit";
 import { HoverCard, h_flex } from "gpui-base";
-import { DIMMED, ICON_SIZE, divider, levelColor, limitNumberColor, modIcon, providerIcon, sessionNumberColor, usageBar } from "./kit.js";
+import { DIMMED, ICON_SIZE, activeAccountDot, divider, levelColor, limitNumberColor, modIcon, providerIcon, sessionNumberColor, usageBar } from "./kit.js";
 import { DENSITY } from "../lib/view.js";
 import { PANEL_CLOSE_DELAY_MS } from "../lib/mod.js";
 
 const BAR_W = 30;
 const PANEL_OPEN_DELAY_MS = 350;
 
+const ACCOUNT_TAG_GAP = 4;
+
 const label = (text, t) => div().text_size(10.5).text_color(t.dim).child(text);
+
+const accountTag = (tag, t) => div().flex_none().whitespace_nowrap().text_size(10.5).text_color(t.foreground).font_semibold().child(tag);
+
+function groupIcon(g, t) {
+  const icon = providerIcon(g.providerId, g.icon, t.foreground);
+  if (g.tag == null) return icon;
+  return h_flex().gap(ACCOUNT_TAG_GAP).items_center().flex_none().child(icon).child(accountTag(g.tag, t));
+}
 
 function segment(s, density, t) {
   return h_flex().gap(5).items_center().flex_none()
@@ -25,7 +35,8 @@ function spendSegment(today, t) {
 function providerGroup(g, density, t) {
   return h_flex().id(`ul-${g.providerId}`).gap(density === DENSITY.FULL ? 10 : 8).items_center().flex_none()
     .opacity(g.dim ? DIMMED : 1)
-    .child(providerIcon(g.providerId, g.icon, t.foreground))
+    .when(g.active === true, (e) => e.child(activeAccountDot(t)))
+    .child(groupIcon(g, t))
     .when(g.mark != null, (e) => e.child(div().text_color(t.dim).child(g.mark)))
     .children(g.segments.map((s) => segment(s, density, t)))
     .when(g.spend != null, (e) => e.child(spendSegment(g.spend, t)));

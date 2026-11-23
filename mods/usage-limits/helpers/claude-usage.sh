@@ -4,6 +4,28 @@ NO_REPLY=1
 DEADLINE_S=15
 REQUEST='{"type":"control_request","request_id":"herdr-usage-limits","request":{"subtype":"get_usage","skip_behaviors":true}}'
 
+expanded_home() {
+  case $1 in
+    \~) printf '%s' "$HOME" ;;
+    \~/*) printf '%s/%s' "$HOME" "${1#\~/}" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+ask_as_account() {
+  case $1 in -*) exit "$NO_REPLY" ;; esac
+  cfg=$(expanded_home "$1")
+  while [ "${cfg%/}" != "$cfg" ]; do cfg=${cfg%/}; done
+  if [ "$cfg" = "$HOME/.claude" ]; then
+    unset CLAUDE_CONFIG_DIR
+  else
+    CLAUDE_CONFIG_DIR=$cfg
+    export CLAUDE_CONFIG_DIR
+  fi
+}
+
+[ -n "${1:-}" ] && ask_as_account "$1"
+
 CLAUDE=$(command -v "${HERDR_USAGE_CLAUDE_BIN:-claude}" 2>/dev/null) || exit "$NOT_INSTALLED"
 
 dir=$(mktemp -d "${TMPDIR:-/tmp}/herdr-claude-usage.XXXXXX") || exit "$NO_REPLY"

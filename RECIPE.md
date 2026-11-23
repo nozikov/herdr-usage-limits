@@ -22,6 +22,13 @@ on the bar and in the panel. It never reads a token.
   - a 1×8px `foreground` tick at 75% opacity = how much of the window's time
     has passed (pace);
   - the percent in its color.
+- With several Claude accounts (`claudeAccounts`), each is a group of its own,
+  in that order, in place of the one Claude group. The first looks as above;
+  the others add their short name right after the icon: the name without a
+  leading "Claude", trimmed and lowercased (`Claude Work` → `work`), 10.5px
+  `foreground` semibold, 4px from the icon. The account the focused terminal's
+  Claude Code runs on gets a 6px round `accent` dot before its icon. No
+  background around the group. One account or none: no name, no dot.
 - OpenCode and Pi come after Codex, when they are on the bar: the icon
   (`icons/opencode.svg`, `icons/pi.svg`), a dim `today` and the number
   (`today 240k`). No bar, tick or percent.
@@ -58,6 +65,10 @@ on the bar and in the panel. It never reads a token.
   (`OpenCode · demo-model · 4 calls · 1 compaction`, `Pi · demo-model · 2 calls`);
   Claude's and Codex's stay as they were.
   Nothing else focused, no block.
+- Several Claude accounts: each has its own section and plan badge; the one the
+  focused session runs on adds, after the badge, a 6px `accent` dot and
+  `this session` (10.5px `accent`), 4px apart. Each is its own row in the
+  settings.
 - Left boxes are about the bar, right boxes about the panel; a provider on
   neither isn't fetched, and ticking it again fetches it at once. The session
   isn't read while its block is out of the panel and none of its numbers is on
@@ -122,6 +133,15 @@ on the bar and in the panel. It never reads a token.
   the bar"; `panelHidden` lists providers, and `"session"`, left out of the panel;
   `folded` lists folded providers; `spendOnBar` holds an explicit bar choice per
   spend provider. Every key is optional, so older prefs and presets read as before.
+  `claudeAccounts: [{ configDir, name?, id? }]` is read once at start and is not a
+  pref: each entry with a `configDir` becomes a Claude provider
+  (`lib/accounts.js`, `providersFor` in `providers/index.js`). The first usable
+  one keeps `claude` / `Claude`, the others `claude-<folder suffix>` /
+  `Claude <Suffix>` (no suffix: their place), unless given; an id that isn't
+  `[a-z0-9-]+`, is taken, or a `configDir` starting with `-` drops or replaces
+  it. Nothing usable: today's list, unchanged. The View keeps that list and
+  passes it to every model, the settings and the helpers; `PROVIDERS` stays the
+  default list.
 - `mods/usage-limits/`:
   - `main.js`: the View, the one class. It keeps the state (panel, pointer,
     focused terminal, session read, fetches in flight) and calls the host:
@@ -170,7 +190,10 @@ on the bar and in the panel. It never reads a token.
     `weekly_all` / `weekly_scoped` + `scope.model.display_name`, `percent`
     0–100, `resets_at` ISO 8601), kills the CLI. `--safe-mode` keeps hooks,
     MCP servers and customizations out of that run; it sends no prompt and
-    starts no turn.
+    starts no turn. With a config dir as its argument (one account of
+    several; `~` and `~/` are your home, a trailing `/` dropped, one starting
+    with `-` refused) it runs the CLI with `CLAUDE_CONFIG_DIR` set to it, or
+    unset for `~/.claude`.
   - `helpers/codex-limits.sh`: runs `codex app-server`, JSON-RPC
     `initialize` / `initialized` / `account/rateLimits/read`, prints the
     `"id":2` line (`primary`/`secondary`: `usedPercent`, `windowDurationMins`,
@@ -210,7 +233,10 @@ on the bar and in the panel. It never reads a token.
     2 with JSON choices (session IDs and titles) when one must be picked, and
     after a pick the mod passes the thread ID and the process identity as
     third and fourth arguments. Claude's files: `CLAUDE_CONFIG_DIR`, else
-    `%USERPROFILE%\.claude` when it exists, else `~/.claude`.
+    `%USERPROFILE%\.claude` when it exists, else `~/.claude`; with config dirs
+    after the pid (`claudeAccounts`), the first that holds
+    `sessions/<pid>.json`, and the first line is `account=<its place, from 1>`,
+    printed also when the session has no numbers yet (exit 1).
     OpenCode: top-level `session_v2` rows and `session_message` rows of
     `opencode.db`, through `sqlite3 -readonly`; context = the newest reply's
     `input + output + reasoning + cache.read + cache.write`. Pi:
@@ -245,6 +271,10 @@ on the bar and in the panel. It never reads a token.
   last: { trigger, pre, post } | null }`, plus `model: string | null` for
   OpenCode and Pi, whose block names the agent and its model. `compactions`
   is null where the agent's log isn't known to record them, which is not 0.
+- Claude account provider: Claude's provider plus `configDir`, `args:
+  [configDir]` (passed to its helper) and, from the second account, `tag` (the
+  short name on the bar). Bar and panel groups carry `tag` and `active: true`
+  only when they have them, so a list without accounts gives the same models.
 - Prefs: as in the presets above, plus `showBars` (each limit has its bar
   when there's room; off, numbers only). Limits are opt-out lists, so anything
   new shows by itself; session numbers on the bar are opt-in. `showResetTime`:
@@ -409,7 +439,17 @@ on the bar and in the panel. It never reads a token.
   that PATH (or use the env overrides).
 - Herdr doesn't hot-reload a mod folder that is a symlink; switch layouts
   away and back after editing.
-- macOS and Linux only (`sh`). Local machine only, one account per CLI.
+- macOS and Linux only (`sh`). Local machine only. One Codex account; Claude
+  can have several through `claudeAccounts`.
+- On macOS Claude Code names its keychain entry after `CLAUDE_CONFIG_DIR` when
+  it is set, so setting it to the default `~/.claude` looks for a sign-in that
+  isn't there: that account is asked with the variable unset.
+- A running Claude Code keeps `sessions/<pid>.json` in its own config dir only,
+  so the dir that has it is the account the session runs on. To mark it with
+  two accounts or more, the session is read even when its block is out of the
+  panel and none of its numbers is on the bar (each minute, on a focus change,
+  on hovering after 10 s); then only for Claude Code, never running the helper
+  for another agent.
 - Labels are English.
 
 ## Done when

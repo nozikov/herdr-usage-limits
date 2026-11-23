@@ -46,10 +46,16 @@ export function parse(text, now) {
   return okReport(SOURCE, now, windows, body.subscription_type ?? null);
 }
 
-export default {
+const claude = {
   id: "claude",
   name: "Claude",
   icon: "icons/claude.svg",
   helper: "helpers/claude-usage.sh",
   parse,
 };
+
+export default claude;
+
+export function claudeAccount({ id, name, configDir }, tag) {
+  return { ...claude, id, name, configDir, args: [configDir], ...(tag ? { tag } : {}) };
+}

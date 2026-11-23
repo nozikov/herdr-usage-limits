@@ -5,7 +5,7 @@ import { PROVIDERS } from "../providers/index.js";
 export const NOT_INSTALLED = "not installed";
 const IDLE = "no use in 7 days";
 
-export const spendBarOn = (prefs, states, providerId) => spendOnBar(prefs, providerId, limitsSettled(states, prefs) && !hasLimits(states));
+export const spendBarOn = (prefs, states, providerId, providers = PROVIDERS) => spendOnBar(prefs, providerId, limitsSettled(states, prefs, providers) && !hasLimits(states, providers));
 
 const shownReading = (s) => (s.report?.status === "ok" ? s.report : s.lastGood);
 const failureMessage = (s) => (s.report && s.report.status !== "ok" ? s.report.message : null);
@@ -16,10 +16,10 @@ function spendReason(missing, idle, s) {
   return failureMessage(s);
 }
 
-function spendRow(p, s, prefs, states) {
+function spendRow(p, s, prefs, states, providers) {
   const missing = s.installed === false;
   const idle = !missing && shownReading(s)?.spend?.week === 0;
-  return { kind: "spend", provider: p, on: spendBarOn(prefs, states, p.id), dim: missing || idle, reason: spendReason(missing, idle, s), inPanel: inPanel(prefs, p.id), windows: [] };
+  return { kind: "spend", provider: p, on: spendBarOn(prefs, states, p.id, providers), dim: missing || idle, reason: spendReason(missing, idle, s), inPanel: inPanel(prefs, p.id), windows: [] };
 }
 
 function limitsRow(p, s, prefs) {
@@ -32,6 +32,6 @@ function limitsRow(p, s, prefs) {
 export function settingsRows(prefs, states, providers = PROVIDERS) {
   return providers.map((p) => {
     const s = states[p.id] ?? {};
-    return p.kind === "spend" ? spendRow(p, s, prefs, states) : limitsRow(p, s, prefs);
+    return p.kind === "spend" ? spendRow(p, s, prefs, states, providers) : limitsRow(p, s, prefs);
   });
 }

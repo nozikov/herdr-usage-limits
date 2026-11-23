@@ -4,20 +4,8 @@ import { spawnSync } from "node:child_process";
 import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MOD, HERE } from "./_util.js";
-
-const FAKE = join(HERE, "fake-cli", "claude");
-
-function run(helper, env) {
-  const t0 = Date.now();
-  const r = spawnSync("sh", [join(MOD, "helpers", helper)], { env: { ...process.env, ...env }, encoding: "utf8", timeout: 30000 });
-  assert.doesNotMatch(r.stderr ?? "", /No such file|can't open/, "helper script missing");
-  return { ...r, ms: Date.now() - t0 };
-}
-
-function alive(pattern) {
-  return spawnSync("pgrep", ["-f", pattern], { encoding: "utf8" }).stdout.trim() !== "";
-}
+import { HERE } from "./_util.js";
+import { FAKE, alive, claudeHome, run, session } from "./_helpers.js";
 
 test("claude helper: bogus bin → exit 127", () => {
   const r = run("claude-usage.sh", { HERDR_USAGE_CLAUDE_BIN: "/nonexistent/claude" });
@@ -89,19 +77,6 @@ test("codex helper: codex missing but session logs exist → exit 127 (not a sta
   assert.equal(r.status, 127);
   assert.equal(r.stdout, "");
 });
-
-function session(args, env) {
-  return spawnSync("sh", [join(MOD, "helpers", "session.sh"), ...args], { env: { ...process.env, ...env }, encoding: "utf8", timeout: 10000 });
-}
-
-function claudeHome(fixture) {
-  const dir = mkdtempSync(join(tmpdir(), "ul-claude-"));
-  mkdirSync(join(dir, "sessions"));
-  mkdirSync(join(dir, "projects", "-some-project"), { recursive: true });
-  writeFileSync(join(dir, "sessions", "123.json"), JSON.stringify({ pid: 123, sessionId: "abc-1", cwd: "/x" }));
-  copyFileSync(join(HERE, "fixtures", fixture), join(dir, "projects", "-some-project", "abc-1.jsonl"));
-  return dir;
-}
 
 test("session helper, claude: numbers from the main thread, not from quoted text or subagents", () => {
   const r = session(["claude", "123"], { CLAUDE_CONFIG_DIR: claudeHome("claude-session.jsonl") });
