@@ -7,7 +7,7 @@ export const SESSION_TITLE = "This session";
 export const DIMMED = 0.55;
 export const LEFT_COLUMN_W = 48;
 export const PERCENT_COLUMN_W = 36;
-const ICON_SIZE = 13;
+export const ICON_SIZE = 13;
 
 export const modIcon = (name) => `mods/${MOD}/icons/${name}.svg`;
 

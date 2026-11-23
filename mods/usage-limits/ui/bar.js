@@ -1,6 +1,6 @@
 import { div, svg } from "gpui-kit";
 import { HoverCard, h_flex } from "gpui-base";
-import { DIMMED, divider, levelColor, limitNumberColor, modIcon, providerIcon, sessionNumberColor, usageBar } from "./kit.js";
+import { DIMMED, ICON_SIZE, divider, levelColor, limitNumberColor, modIcon, providerIcon, sessionNumberColor, usageBar } from "./kit.js";
 import { DENSITY } from "../lib/view.js";
 import { PANEL_CLOSE_DELAY_MS } from "../lib/mod.js";
 
@@ -31,15 +31,23 @@ function providerGroup(g, density, t) {
     .when(g.spend != null, (e) => e.child(spendSegment(g.spend, t)));
 }
 
-function sessionNumbers(numbers, t) {
-  return h_flex().gap(10).items_center().flex_none()
-    .children(numbers.map((n) => div().whitespace_nowrap().text_color(sessionNumberColor(n.level, n.text, t)).child(n.text)));
+function sessionSegment(n, density, t) {
+  return h_flex().gap(5).items_center().flex_none()
+    .when(n.label != null, (e) => e.child(label(n.label, t)))
+    .when(n.icon != null, (e) => e.child(svg(modIcon(n.icon)).size(ICON_SIZE).text_color(t.dim)))
+    .when(n.fill != null && density === DENSITY.FULL, (e) => e.child(usageBar(BAR_W, n.fill, null, levelColor(n.level, t), t)))
+    .child(div().whitespace_nowrap().text_color(n.fill != null ? levelColor(n.level, t) : sessionNumberColor(n.level, n.text, t)).child(n.text));
+}
+
+function sessionNumbers(numbers, density, t) {
+  return h_flex().gap(density === DENSITY.FULL ? 10 : 8).items_center().flex_none()
+    .children(numbers.map((n) => sessionSegment(n, density, t)));
 }
 
 function limitsTrigger({ model, numbers, density, onHover }, t) {
   const content = h_flex().id("ul-content").gap(14).items_center().flex_none().on_hover(onHover);
   if (numbers.length) {
-    content.child(sessionNumbers(numbers, t));
+    content.child(sessionNumbers(numbers, density, t));
     if (!model.empty) content.child(divider(t));
   }
   if (model.empty) content.child(div().id("ul-empty").child(svg(modIcon("gauge")).size(14)));
