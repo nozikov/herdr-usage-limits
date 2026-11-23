@@ -14,6 +14,10 @@ test("descriptor", () => {
   );
 });
 
+test("its icon is OpenCode's one-colour glyph, drawn in the text colour like OpenCode's", () => {
+  assert.equal(opencodeGo.oneColorGlyph, true, "drawn as an image it is black on a dark theme");
+});
+
 test("rolling, weekly and monthly become three windows", () => {
   const r = opencodeGo.parse(reply({ rolling: meter(0), weekly: meter(2, "2026-11-23T00:00:00.000Z"), monthly: meter(64, "2026-12-05T18:00:27.000Z") }), NOW);
   assert.equal(r.status, "ok");
