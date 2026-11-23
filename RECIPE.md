@@ -5,7 +5,7 @@ in view: every limit window each one reports (5-hour, weekly, per-model weekly
 such as Fable), with a bar, a pace tick, the percent used and, when it gets
 tight, the time to reset. OpenCode and Pi, which have no limits, show the tokens
 they spent today and over 7 days. Hover it for the details and to choose what shows
-on the bar and in the panel. It never reads a token.
+on the bar and in the panel. The only key it reads is the OpenCode Go key.
 
 ![Usage limits](preview.png)
 
@@ -347,7 +347,7 @@ on the bar and in the panel. It never reads a token.
   folder and start time, and Codex's open session file. `ps` also lists the
   processes, names and arguments, to count the copies of an agent in a folder;
   that stays on the machine.
-- Reads no token or credential file. Reads `~/.codex/sessions/**/*.jsonl`
+- Reads no token or credential file other than the OpenCode Go key. Reads `~/.codex/sessions/**/*.jsonl`
   only as a fallback.
 - Reads the focused session: Claude's and Codex's logs, OpenCode's database
   through `sqlite3`, read-only, and Pi's session files; Pi's files of the last
