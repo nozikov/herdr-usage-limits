@@ -46,6 +46,19 @@ test("claude helper: CLI that never answers → exit 1 within 20 s and no leftov
   assertGaveUpInTime(r, "sleep 60", "hung CLI left running");
 });
 
+function slowSleepPath() {
+  const dir = mkdtempSync(join(tmpdir(), "ul-slow-sleep-"));
+  const stub = join(dir, "sleep");
+  writeFileSync(stub, "#!/bin/sh\nexec /bin/sleep \"$(awk -v s=\"$1\" 'BEGIN { print s * 4 }')\"\n");
+  chmodSync(stub, 0o755);
+  return `${dir}:${process.env.PATH}`;
+}
+
+test("claude helper: with a slow sleep, as on Git Bash, the 15 s deadline still holds", { timeout: 60000 }, () => {
+  const r = run("claude-usage.sh", { HERDR_USAGE_CLAUDE_BIN: FAKE, HANG: "1", PATH: slowSleepPath() });
+  assertGaveUpInTime(r, "sleep 240", "hung CLI left running");
+});
+
 test("codex helper: bogus bin and no sessions dir → exit 127", () => {
   const r = run("codex-limits.sh", { HERDR_USAGE_CODEX_BIN: "/nonexistent/codex", CODEX_HOME: mkdtempSync(join(tmpdir(), "codex-home-")) });
   assert.equal(r.status, 127);
