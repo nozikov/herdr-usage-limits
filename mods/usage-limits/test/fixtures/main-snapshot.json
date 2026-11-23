@@ -1822,7 +1822,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -1830,6 +1830,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -3837,7 +3841,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -3845,6 +3849,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -7317,7 +7325,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -7325,6 +7333,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -9332,7 +9344,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -9340,6 +9352,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -11775,7 +11791,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -11783,6 +11799,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -13790,7 +13810,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -13798,6 +13818,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -16233,7 +16257,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -16241,6 +16265,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -17673,7 +17701,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -17681,6 +17709,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -19805,7 +19837,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -19813,6 +19845,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -21245,7 +21281,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -21253,6 +21289,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -23377,7 +23417,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -23385,6 +23425,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -24817,7 +24861,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -24825,6 +24869,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -26949,7 +26997,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -26957,6 +27005,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -28389,7 +28441,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -28397,6 +28449,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -30410,7 +30466,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -30418,6 +30474,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -32172,7 +32232,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -32180,6 +32240,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -34193,7 +34257,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -34201,6 +34265,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -35826,7 +35894,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -35834,6 +35902,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -37864,7 +37936,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -37872,6 +37944,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -39463,7 +39539,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -39471,6 +39547,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -41503,7 +41583,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -41511,6 +41591,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -43193,7 +43277,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -43201,6 +43285,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -45235,7 +45323,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -45243,6 +45331,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -46976,7 +47068,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -46984,6 +47076,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -49019,7 +49115,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -49027,6 +49123,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -50811,7 +50911,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -50819,6 +50919,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -52855,7 +52959,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -52863,6 +52967,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -54647,7 +54755,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -54655,6 +54763,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -56668,7 +56780,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -56676,6 +56788,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -58754,7 +58870,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -58762,6 +58878,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -61086,7 +61206,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -61094,6 +61214,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -62878,7 +63002,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -62886,6 +63010,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -64922,7 +65050,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -64930,6 +65058,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -66714,7 +66846,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -66722,6 +66854,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -68758,7 +68894,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -68766,6 +68902,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -70666,7 +70806,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -70674,6 +70814,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -72712,7 +72856,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -72720,6 +72864,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -74620,7 +74768,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -74628,6 +74776,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -76668,7 +76820,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -76676,6 +76828,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -78576,7 +78732,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -78584,6 +78740,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -80651,7 +80811,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -80659,6 +80819,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -82559,7 +82723,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -82567,6 +82731,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -84719,7 +84887,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -84727,6 +84895,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -86107,7 +86279,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -86115,6 +86287,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -87805,7 +87981,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -87813,6 +87989,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -89193,7 +89373,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -89201,6 +89381,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -90893,7 +91077,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -90901,6 +91085,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -92281,7 +92469,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -92289,6 +92477,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -93952,7 +94144,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -93960,6 +94152,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -95340,7 +95536,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -95348,6 +95544,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -97011,7 +97211,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -97019,6 +97219,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -98378,7 +98582,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -98386,6 +98590,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -101363,7 +101571,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -101371,6 +101579,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -102730,7 +102942,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -102738,6 +102950,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -107182,7 +107398,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -107190,6 +107406,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.dim"
                   ]
                  ],
                  "children": []
@@ -110213,7 +110433,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -110221,6 +110441,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -112228,7 +112452,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -112236,6 +112460,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -115595,7 +115823,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -115603,6 +115831,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -117610,7 +117842,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -117618,6 +117850,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -120054,7 +120290,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -120062,6 +120298,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -122069,7 +122309,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -122077,6 +122317,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -124476,7 +124720,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -124484,6 +124728,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -126633,7 +126881,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -126641,6 +126889,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -129072,7 +129324,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -129080,6 +129332,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -131229,7 +131485,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -131237,6 +131493,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -133559,7 +133819,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -133567,6 +133827,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -135574,7 +135838,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -135582,6 +135846,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -137354,7 +137622,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -137362,6 +137630,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.dim"
                   ]
                  ],
                  "children": []
@@ -140029,7 +140301,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -140037,6 +140309,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.dim"
                   ]
                  ],
                  "children": []
@@ -142525,7 +142801,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -142533,6 +142809,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.dim"
                   ]
                  ],
                  "children": []
@@ -147578,7 +147858,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -147586,6 +147866,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.dim"
                   ]
                  ],
                  "children": []
@@ -150453,7 +150737,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -150461,6 +150745,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.dim"
                   ]
                  ],
                  "children": []
@@ -154309,7 +154597,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -154317,6 +154605,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -156727,7 +157019,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -156735,6 +157027,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -161257,7 +161553,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -161265,6 +161561,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -163697,7 +163997,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -163705,6 +164005,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -166788,7 +167092,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -166796,6 +167100,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -169228,7 +169536,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -169236,6 +169544,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -172319,7 +172631,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -172327,6 +172639,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -173954,7 +174270,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -173962,6 +174278,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -176734,7 +177054,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -176742,6 +177062,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -178369,7 +178693,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -178377,6 +178701,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -181149,7 +181477,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -181157,6 +181485,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -182784,7 +183116,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -182792,6 +183124,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -185258,7 +185594,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -185266,6 +185602,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -187215,7 +187555,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -187223,6 +187563,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -189812,7 +190156,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -189820,6 +190164,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -191447,7 +191795,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -191455,6 +191803,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -194495,7 +194847,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -194503,6 +194855,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -196869,7 +197225,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -196877,6 +197233,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -201543,7 +201903,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -201551,6 +201911,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -203917,7 +204281,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -203925,6 +204289,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -207236,7 +207604,7 @@
              ],
              "children": [
               {
-               "kind": "image",
+               "kind": "svg",
                "args": [
                 "icons/opencode.svg"
                ],
@@ -207244,6 +207612,10 @@
                 [
                  "size",
                  13
+                ],
+                [
+                 "text_color",
+                 "theme.foreground"
                 ]
                ],
                "children": []
@@ -209610,7 +209982,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -209618,6 +209990,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -212370,7 +212746,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -212378,6 +212754,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -215066,7 +215446,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -215074,6 +215454,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -217826,7 +218210,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -217834,6 +218218,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -220671,7 +221059,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -220679,6 +221067,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []
@@ -223448,7 +223840,7 @@
                  ]
                 },
                 {
-                 "kind": "image",
+                 "kind": "svg",
                  "args": [
                   "icons/opencode.svg"
                  ],
@@ -223456,6 +223848,10 @@
                   [
                    "size",
                    13
+                  ],
+                  [
+                   "text_color",
+                   "theme.foreground"
                   ]
                  ],
                  "children": []
@@ -225995,7 +226391,7 @@
            ],
            "children": [
             {
-             "kind": "image",
+             "kind": "svg",
              "args": [
               "icons/opencode.svg"
              ],
@@ -226003,6 +226399,10 @@
               [
                "size",
                13
+              ],
+              [
+               "text_color",
+               "theme.foreground"
               ]
              ],
              "children": []

@@ -39,5 +39,6 @@ export default {
   name: "OpenCode Go",
   icon: "icons/opencode.svg",
   helper: "helpers/opencode-go.sh",
+  oneColorGlyph: true,
   parse,
 };
