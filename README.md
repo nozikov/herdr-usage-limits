@@ -28,6 +28,8 @@ See how much Claude Code and Codex you have left, right in Herdr's status bar:
 - **Your current session:** how full the context is, how many messages you've sent, how many times it was compacted.
 - **OpenCode and Pi:** the tokens they used today and over the last 7 days. They have no limits to show.
 - **OpenCode Go:** your 5-hour, weekly and monthly allowance, with a bar and a percent each.
+- **Antigravity:** Gemini's 5-hour and weekly limits, from agy's status line.
+- **Several Claude accounts:** each with its own limits, and a dot on the one your session runs on.
 
 OpenCode session statistics support both legacy and current SQLite storage automatically.
 Both appear as the same **OpenCode** block, with the same settings and counters; there is
@@ -118,6 +120,7 @@ remembered across restarts.
 
 - **Claude, Codex and their limits** are on by default. Untick what you don't watch.
 - **OpenCode Go** is on by default when a key is found: rolling 5-hour, weekly and monthly, each from OpenCode's own usage endpoint.
+- **Antigravity** is on by default once its hook has saved a reading: Gemini's 5-hour and weekly. Its `others` limits are in the panel and off the bar until you tick them.
 - **OpenCode and Pi** put today's tokens on the bar: `today 240k`. They're off the bar by default, unless no provider with limits has any numbers; then they're on.
 - **Always show time to reset** adds the time to every limit, green ones too.
 - **Show bars** keeps a bar beside each limit. Untick it for numbers only.
@@ -219,7 +222,7 @@ hook to agy's settings, `~/.gemini/antigravity-cli/settings.json`:
   quota, the plan and the time (never the conversation) to
   `~/.cache/herdr-usage-limits/antigravity.json`, readable only by you. Needs `jq`.
 - The numbers are as fresh as agy's last status line: open agy once to see them. An old
-  reading shows dimmed, and a reset that has passed since shows 0%.
+  reading shows dimmed, and a reset that has passed since shows `—`.
 - Several agy at once are fine: each limit keeps the newest reading.
 - Without agy installed (`agy` on your PATH or in `~/.local/bin`), Antigravity stays off
   the bar and out of the panel, as Codex does.
@@ -260,7 +263,9 @@ hook to agy's settings, `~/.gemini/antigravity-cli/settings.json`:
   Separate spend adapters include paid compactions and subagents, aggregate from local
   midnight (today and six previous days), and deduplicate migrated session IDs.
 - It sends no prompt and starts no turn, so it uses no model time.
-- It changes no Claude Code, Codex, OpenCode or Pi settings.
+- With `claudeAccounts`, each account's `claude` is asked with its own `CLAUDE_CONFIG_DIR`, and the focused session's log is looked up in each account's folder.
+- For Antigravity it reads only `~/.cache/herdr-usage-limits/antigravity.json`, which its status line hook writes with `jq`. It never runs `agy`.
+- It changes no Claude Code, Codex, OpenCode, Pi or Antigravity settings. The agy hook is one you add yourself.
 
 > [!NOTE]
 > `get_usage` is an internal Claude Code interface, checked on 2.1.317. If an update changes it, Claude shows `!` with the error instead of numbers.
