@@ -98,7 +98,7 @@ function prefsActions(view) {
   return {
     togglePanel: (id) => save((p) => togglePanel(p, id)),
     toggleProvider: (id) => save((p) => toggleProvider(p, id)),
-    toggleWindow: (providerId, windowId) => save((p) => toggleWindow(p, providerId, windowId)),
+    toggleWindow: (providerId, windowId, offBarByDefault) => save((p) => toggleWindow(p, providerId, windowId, offBarByDefault)),
     toggleSpendBar: (id) => save((p) => toggleSpendOnBar(p, id, spendBarOn(p, states(), id, view.providers))),
     toggleResetTime: () => save(toggleShowResetTime),
     toggleBars: () => save(toggleShowBars),

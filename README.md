@@ -202,6 +202,28 @@ section in the panel with its plan, its own row in the settings.
   expects.
 - Without `claudeAccounts`, nothing changes: one Claude, from Herdr's own environment.
 
+### Antigravity (agy)
+
+agy gives its limits only to its status line command. To see them here, add the mod's
+hook to agy's settings, `~/.gemini/antigravity-cli/settings.json`:
+
+```json
+"statusLine": { "type": "command", "stack_with_default": true,
+  "command": "sh \"$HOME/.config/herdr-app/mods/usage-limits/helpers/agy-statusline.sh\"" }
+```
+
+- The bar shows Gemini's 5-hour and weekly limits. The panel adds `others`: the Claude
+  and GPT models you run inside Antigravity, on Antigravity's quota, not your own Claude
+  subscription. They're off the bar by default; tick them in the settings to put them there.
+- The hook prints nothing, so agy's own status line stays as it is. It saves only the
+  quota, the plan and the time (never the conversation) to
+  `~/.cache/herdr-usage-limits/antigravity.json`, readable only by you. Needs `jq`.
+- The numbers are as fresh as agy's last status line: open agy once to see them. An old
+  reading shows dimmed, and a reset that has passed since shows 0%.
+- Several agy at once are fine: each limit keeps the newest reading.
+- Without agy installed (`agy` on your PATH or in `~/.local/bin`), Antigravity stays off
+  the bar and out of the panel, as Codex does.
+
 ## What it runs
 
 - `sh`, your `claude` CLI and your `codex` CLI, each briefly, every 5 minutes. They use their own sign-ins and talk to Anthropic and OpenAI. Apart from the OpenCode Go request below, the mod makes no network requests itself.

@@ -25,7 +25,10 @@ function spendRow(p, s, prefs, states, providers) {
 function limitsRow(p, s, prefs) {
   const missing = s.installed === false;
   const on = isShown(prefs, p.id);
-  const windows = (shownReading(s)?.windows ?? []).map((w) => ({ id: w.id, long: w.long, on: on && isShown(prefs, p.id, w.id) }));
+  const windows = (shownReading(s)?.windows ?? []).map((w) => {
+    const offBarByDefault = w.offBarByDefault === true;
+    return { id: w.id, long: w.long, offBarByDefault, on: on && isShown(prefs, p.id, w.id, offBarByDefault) };
+  });
   return { kind: "limits", provider: p, on, dim: missing, reason: missing ? NOT_INSTALLED : failureMessage(s), inPanel: inPanel(prefs, p.id), windows };
 }
 

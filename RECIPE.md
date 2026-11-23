@@ -29,6 +29,12 @@ on the bar and in the panel. It never reads a token.
   `foreground` semibold, 4px from the icon. The account the focused terminal's
   Claude Code runs on gets a 6px round `accent` dot before its icon. No
   background around the group. One account or none: no name, no dot.
+- Antigravity (agy) comes right after Codex, when installed: Herdr's
+  `icons/antigravity.svg`, multicoloured, so drawn as an image like Claude's,
+  then `5h` and `wk` for Gemini. Its `others` windows (`others 5h`,
+  `others wk`: Claude and GPT run inside Antigravity, on its quota) are off
+  the bar by default, always in the panel (`5-hour · others`,
+  `Weekly · others`), and a settings box puts them on the bar.
 - OpenCode and Pi come after Codex, when they are on the bar: the icon
   (`icons/opencode.svg`, `icons/pi.svg`), a dim `today` and the number
   (`today 240k`). No bar, tick or percent.
@@ -110,7 +116,9 @@ on the bar and in the panel. It never reads a token.
   as usual. With nothing for the panel (no CLI installed, or the session and
   every provider taken out of it), the panel opens on settings.
 - Choices are opt-out lists, so a new window (another model limit) or a CLI
-  installed later shows up by itself. Folds and bar/panel choices are stored
+  installed later shows up by itself. The one exception: a window its provider
+  marks `offBarByDefault` (agy's `3p-*`, third-party models) is opt-in for the
+  bar, in `shownWindows`; the panel always shows it. Folds and bar/panel choices are stored
   and survive a restart; only explicit clicks are stored.
 
 ## Built from
@@ -126,11 +134,13 @@ on the bar and in the panel. It never reads a token.
   ```
 
   Optional presets in `content.props`: `{ "hidden": ["codex"],
-  "hiddenWindows": ["claude:session"], "showResetTime": true,
+  "hiddenWindows": ["claude:session"], "shownWindows": ["agy:3p-5h"], "showResetTime": true,
   "sessionOnBar": ["context", "calls", "compactions"], "panelHidden": ["session"],
   "folded": ["claude"], "spendOnBar": { "opencode": true } }` (used until the person
   changes anything in the settings). `hidden` and `hiddenWindows` mean "hidden from
-  the bar"; `panelHidden` lists providers, and `"session"`, left out of the panel;
+  the bar"; `shownWindows` lists the windows marked off the bar by default that
+  were ticked onto it (`hiddenWindows` doesn't apply to those, and a hidden
+  provider hides them too); `panelHidden` lists providers, and `"session"`, left out of the panel;
   `folded` lists folded providers; `spendOnBar` holds an explicit bar choice per
   spend provider. Every key is optional, so older prefs and presets read as before.
   `claudeAccounts: [{ configDir, name?, id? }]` is read once at start and is not a
@@ -170,6 +180,16 @@ on the bar and in the panel. It never reads a token.
     "not installed", "failing with a last good reading" and "stale" work as for
     limits. `providers/index.js` lists them
     in order. A new provider is one more file there plus its helper.
+    `providers/agy.js`: Antigravity, from the file its status line hook saves;
+    each `quota` bucket is a window, used = 1 − `remaining_fraction`, reset
+    from `reset_time` (ISO 8601), else the saved time + `reset_in_seconds`.
+    `gemini-5h` / `gemini-weekly` → `5h` `5-hour` / `wk` `Weekly`; `3p-5h` /
+    `3p-weekly` → `others 5h` `5-hour · others` / `others wk` `Weekly ·
+    others`, marked `offBarByDefault`, as any `3p-*` is. In that order; an
+    unknown bucket comes after, by key, named from it (`beta-5h` → `beta 5h`,
+    `5-hour · beta`), and one without a number is left out. Plan: `plan_tier`
+    without a leading `Antigravity ` and a trailing ` Quota`. `observedAt` is
+    the saved time. No file yet: unavailable, "Open agy once to see its limits".
   - `icons/`: the mod's own (`gauge`, `refresh`, `gear`, `back`,
     `chevron-down`, `chevron-right`); the agents' icons come from Herdr's.
   - `lib/`: pure, tested with `node --test`: `report.js` (shapes below),
@@ -221,6 +241,18 @@ on the bar and in the panel. It never reads a token.
     folder or file inside it that can't be read is left out and the rest
     counted. It has no deadline of its own: `io/helpers.js` runs every spend
     helper with a 15 s `exec` timeout.
+  - `helpers/agy-statusline.sh`: agy's `statusLine` command (with
+    `stack_with_default`, so agy draws its own line too). Reads agy's JSON on
+    stdin, prints nothing, keeps `{ at (epoch s), plan (plan_tier), quota }`
+    in `${XDG_CACHE_HOME:-~/.cache}/herdr-usage-limits/antigravity.json`
+    (`HERDR_USAGE_AGY_CACHE`), under `umask 077`, written to a temp file and
+    moved. Several agy write there: per bucket the later `reset_time` wins,
+    for the same one the lower `remaining_fraction`; buckets a reading lacks
+    stay, and so does the plan. Input without a `quota` object, or no `jq`:
+    the file is left alone, exit 0.
+  - `helpers/agy-limits.sh`: prints that file on one line (nothing before the
+    first save), exit 0; 127 when agy isn't installed: `agy` (or
+    `HERDR_USAGE_AGY_BIN`) not on PATH and no `~/.local/bin/agy`.
   - `helpers/awk/`: the awk programs the helpers run; `json-field.awk` (a
     number after a key, and whether a key is one of a Pi message's own fields)
     is shared by `pi-spend.sh` and `session.sh`.
@@ -257,7 +289,8 @@ on the bar and in the panel. It never reads a token.
 ## Shapes
 
 - Window: `{ id, short, long, percent (0–100), resetsAt (epoch s | null),
-  durationSec (s | null) }`.
+  durationSec (s | null) }`, plus `offBarByDefault: true` on a window that is
+  opt-in for the bar (only when set, so other windows keep their shape).
 - Report: `{ status: "ok" | "unavailable" | "error", message, plan,
   observedAt (epoch s), source, windows }`. A spend provider's ok report has
   no windows and carries `spend: { today, week }` (token counts; week is the
@@ -276,8 +309,9 @@ on the bar and in the panel. It never reads a token.
   short name on the bar). Bar and panel groups carry `tag` and `active: true`
   only when they have them, so a list without accounts gives the same models.
 - Prefs: as in the presets above, plus `showBars` (each limit has its bar
-  when there's room; off, numbers only). Limits are opt-out lists, so anything
-  new shows by itself; session numbers on the bar are opt-in. `showResetTime`:
+  when there's room; off, numbers only) and `shownWindows`. Limits are opt-out
+  lists, so anything new shows by itself, except windows marked
+  `offBarByDefault`, opt-in like session numbers on the bar. `showResetTime`:
   every window shows its time to reset, not only amber and red ones.
 
 ## Code
@@ -324,6 +358,10 @@ on the bar and in the panel. It never reads a token.
   `opencode stats`' reply reaches the mod whole (counts, costs, model and tool
   names, dates; no message text), and the mod uses its token numbers. Never
   runs `pi`.
+- Antigravity: `agy-statusline.sh` gets agy's status line JSON, which holds
+  the conversation's details (folder, ids, transcript path, email), and keeps
+  only `quota`, `plan_tier` and the time. `agy-limits.sh` reads that file. It
+  never runs `agy`.
 - Sends no prompt and starts no turn: no model usage.
 - Changes no Claude Code, Codex, OpenCode or Pi settings.
 
@@ -450,6 +488,20 @@ on the bar and in the panel. It never reads a token.
   panel and none of its numbers is on the bar (each minute, on a focus change,
   on hovering after 10 s); then only for Claude Code, never running the helper
   for another agent.
+- agy gives its quota to nothing but its status line command, so the numbers
+  are as old as the last line agy drew (shown by `observedAt`, dimmed after
+  15 minutes). A bucket whose reset has passed since then shows 0% and no
+  reset, not `—`: that window has reset and nothing was used in it through
+  agy, or agy would have drawn a newer line. Unknown to the mod for now: other buckets
+  than these four, and whether agy ever sends `reset_in_seconds` without
+  `reset_time`. The stdin shape (`quota.<bucket>.remaining_fraction`,
+  `reset_time`, `reset_in_seconds`, `plan_tier`) is from the bilipp fork,
+  not checked here against a live agy.
+- Several agy can run at once, one with numbers seen a while ago: a later
+  reset is a newer window, and within the same window usage only grows, so the
+  most used is the newest.
+- agy installs to `~/.local/bin`, which a login PATH Herdr starts with may
+  not hold: that path counts as installed too.
 - Labels are English.
 
 ## Done when
