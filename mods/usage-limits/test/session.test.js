@@ -4,6 +4,7 @@ import { AGENT_NAMES, parseSession, sessionView, sessionOnBar } from "../lib/ses
 
 const CODEX = "tokens=115225 window=475000 calls=4\n";
 const CLAUDE = "tokens=182010 calls=32 compactions=2 lastTrigger=auto lastPre=259912 lastPost=10364\n";
+const item = (id, rest) => ({ id, label: null, icon: null, fill: null, level: "ok", ...rest });
 
 test("parseSession: reads the helper's line", () => {
   assert.deepEqual(parseSession(CODEX, "codex"), { app: "codex", tokens: 115225, window: 475000, calls: 4, compactions: null, last: null });
@@ -58,7 +59,7 @@ test("sessionView: Codex has no compaction line rather than a false 0", () => {
 test("sessionView: Codex's measured compactions appear in the panel and bar", () => {
   const s = parseSession("tokens=12345 window=475000 calls=8 compactions=2", "codex");
   assert.equal(sessionView(s, "project").compactions, "2 compactions");
-  assert.deepEqual(sessionOnBar(s, { sessionOnBar: ["compactions"] }), [{ id: "compactions", text: "▼ 2", level: "ok" }]);
+  assert.deepEqual(sessionOnBar(s, { sessionOnBar: ["compactions"] }), [item("compactions", { icon: "compactions", text: "2" })]);
 });
 
 test("sessionView: no session means no block", () => {
@@ -74,16 +75,16 @@ test("sessionOnBar: nothing unless ticked", () => {
 
 test("sessionOnBar: the ticked numbers, in a fixed order", () => {
   assert.deepEqual(sessionOnBar(parseSession(CLAUDE, "claude"), onBar("compactions", "context", "calls")), [
-    { id: "context", text: "ctx 182k", level: "ok" },
-    { id: "calls", text: "⇄ 32", level: "ok" },
-    { id: "compactions", text: "▼ 2", level: "ok" },
+    item("context", { label: "ctx", text: "182k" }),
+    item("calls", { icon: "calls", text: "32" }),
+    item("compactions", { icon: "compactions", text: "2" }),
   ]);
 });
 
-test("sessionOnBar: a known window shows a percent, and warns", () => {
-  assert.deepEqual(sessionOnBar(parseSession(CODEX, "codex"), onBar("context")), [{ id: "context", text: "ctx 24%", level: "ok" }]);
-  const full = { app: "codex", tokens: 450000, window: 475000, calls: 1, compactions: null, last: null };
-  assert.equal(sessionOnBar(full, onBar("context"))[0].level, "hot");
+test("sessionOnBar: a known window shows a percent with a fill, and warns", () => {
+  assert.deepEqual(sessionOnBar(parseSession(CODEX, "codex"), onBar("context")), [item("context", { label: "ctx", text: "24%", fill: 115225 / 475000 })]);
+  const [full] = sessionOnBar(parseSession("tokens=500000 window=475000 calls=1", "codex"), onBar("context"));
+  assert.deepEqual([full.level, full.fill], ["hot", 1]);
 });
 
 test("sessionOnBar: Codex has no compaction number rather than a false 0", () => {

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { barModel, cardModel, chooseDensity, hasLimits, limitsSettled, panelOnEnter, segmentView, tightest, wanted } from "../lib/view.js";
+import { barModel, cardModel, chooseDensity, hasLimits, limitsSettled, panelOnEnter, segmentView, sessionNumbersWidth, tightest, wanted } from "../lib/view.js";
 import { okReport, errorReport, unavailableReport, spendReport, makeWindow } from "../lib/report.js";
 import { effectivePrefs as livePrefs } from "../lib/prefs.js";
 import claude from "../providers/claude.js";
@@ -467,4 +467,12 @@ test("card, bar and density: a passed reset, tight windows and bar prefs give wh
       }
     }
   }
+});
+
+test("sessionNumbersWidth: label, bar and icon each take their room", () => {
+  const ctx = { id: "context", label: "ctx", icon: null, text: "24%", fill: 0.24, level: "ok" };
+  const calls = { id: "calls", label: null, icon: "calls", text: "32", fill: null, level: "ok" };
+  assert.equal(sessionNumbersWidth([]), 0);
+  assert.equal(sessionNumbersWidth([ctx, calls]), 157.5);
+  assert.equal(sessionNumbersWidth([{ ...ctx, fill: null }]), 14 + 21 + 14 + 27.5);
 });
