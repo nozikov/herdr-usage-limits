@@ -92,7 +92,16 @@ const SCENARIOS = {
     await s.frame("hovered");
     await s.press("ul-settings");
     await s.frame("settings");
-    for (const id of ["p-codex-bar", "w-claude-weekly_all", "s-context", "s-calls", "s-compactions", "opt-reset-time", "opt-bars", "p-opencode-bar", "p-pi-panel"]) {
+    for (const id of ["p-codex-bar", "w-claude-weekly_all", "s-context", "s-calls", "s-compactions"]) {
+      await s.press(id);
+      await s.frame(`toggled ${id}`);
+    }
+    await s.fire("root", "on_size_change", { width: 420, height: 24 });
+    await s.frame("narrow: no context bar, ctx label kept");
+    await s.fire("root", "on_size_change", { width: 2000, height: 24 });
+    await s.frame("wide again");
+    await s.fire("root", "on_size_change", { width: 120, height: 24 });
+    for (const id of ["opt-reset-time", "opt-bars", "p-opencode-bar", "p-pi-panel"]) {
       await s.press(id);
       await s.frame(`toggled ${id}`);
     }
