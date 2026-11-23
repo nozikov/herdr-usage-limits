@@ -62,7 +62,9 @@ on the bar and in the panel. It never reads a token.
   neither isn't fetched, and ticking it again fetches it at once. The session
   isn't read while its block is out of the panel and none of its numbers is on
   the bar; ticking one of those again reads it at once. Session
-  numbers join the bar when ticked (`ctx 24%`, `⇄ 32`, `▼ 2`), off by default.
+  numbers join the bar when ticked (`ctx` with a bar and `24%` when the
+  window is known, a calls icon and `32`, a compactions icon and `2`), off by
+  default.
   OpenCode and Pi are off the bar by default, unless no provider with limits
   has a reading with a window (its current one or its last good one); that
   default is worked out live, waits until every fetched limits provider has

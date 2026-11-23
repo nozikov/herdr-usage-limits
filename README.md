@@ -121,7 +121,7 @@ remembered across restarts.
 - **OpenCode and Pi** put today's tokens on the bar: `today 240k`. They're off the bar by default, unless no provider with limits has any numbers; then they're on.
 - **Always show time to reset** adds the time to every limit, green ones too.
 - **Show bars** keeps a bar beside each limit. Untick it for numbers only.
-- **This session** puts the numbers on the bar: `ctx` for context, `⇄` for calls, `▼` for compactions.
+- **This session** puts the numbers on the bar: `ctx` for context, then calls and compactions, each with its icon.
 
 <p align="center">
   <img src="assets/reset-time.png" width="100%" alt="Two status bars: by default only amber and red limits show their time to reset; with the option ticked, every limit does">
