@@ -1,4 +1,4 @@
-export function makeWindow({ id, short, long, percent, resetsAt = null, durationSec = null }) {
+export function makeWindow({ id, short, long, percent, resetsAt = null, durationSec = null, offBarByDefault = false }) {
   return {
     id,
     short,
@@ -6,6 +6,7 @@ export function makeWindow({ id, short, long, percent, resetsAt = null, duration
     percent: Math.round(Number(percent)),
     resetsAt: resetsAt == null ? null : Math.floor(Number(resetsAt)),
     durationSec,
+    ...(offBarByDefault ? { offBarByDefault: true } : {}),
   };
 }
 

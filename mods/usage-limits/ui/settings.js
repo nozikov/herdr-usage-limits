@@ -54,7 +54,7 @@ function providerChecks(row, act, t) {
   const onToggle = row.kind === "spend" ? () => act.toggleSpendBar(p.id) : () => act.toggleProvider(p.id);
   const head = check({ id: `p-${p.id}`, on: row.on, label: [providerIcon(p.id, p.icon, color), text(p.name, color)], onToggle, extra: row.reason, panel }, t);
   const windows = row.windows.map((w) => check({
-    id: `w-${p.id}-${w.id}`, on: w.on, label: [text(w.long, row.on ? t.muted : t.dim)], onToggle: () => act.toggleWindow(p.id, w.id), indent: WINDOW_INDENT,
+    id: `w-${p.id}-${w.id}`, on: w.on, label: [text(w.long, row.on ? t.muted : t.dim)], onToggle: () => act.toggleWindow(p.id, w.id, w.offBarByDefault), indent: WINDOW_INDENT,
   }, t));
   return [head, ...windows];
 }

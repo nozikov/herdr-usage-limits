@@ -20,7 +20,7 @@ test("accounts: no list, or nothing usable in it, gives today's providers as the
 
 test("accounts: two accounts become two Claude providers in place of the one, first keeps claude", () => {
   const ps = providersFor(TWO);
-  assert.deepEqual(ps.map((p) => [p.id, p.name]), [["claude", "Claude"], ["claude-work", "Claude Work"], ["codex", "Codex"], ["opencode", "OpenCode"], ["opencode-go", "OpenCode Go"], ["pi", "Pi"]]);
+  assert.deepEqual(ps.map((p) => [p.id, p.name]), [["claude", "Claude"], ["claude-work", "Claude Work"], ["codex", "Codex"], ["agy", "Antigravity"], ["opencode", "OpenCode"], ["opencode-go", "OpenCode Go"], ["pi", "Pi"]]);
   assert.deepEqual(ps.slice(0, 2).map((p) => p.args), [["~/.claude"], ["~/.claude-work"]]);
   assert.deepEqual(claudeConfigDirs(ps), ["~/.claude", "~/.claude-work"]);
   assert.equal(ps[1].helper, PROVIDERS[0].helper);
@@ -129,6 +129,6 @@ test("density: an account's tag and the in-use dot take room", () => {
 
 test("spend default: a second account's limits count as limits", () => {
   const ps = providersFor(TWO);
-  const states = { claude: { report: null, lastGood: null, installed: false }, "claude-work": TWO_STATES["claude-work"], codex: { report: null, lastGood: null, installed: false }, "opencode-go": { report: null, lastGood: null, installed: false } };
+  const states = { claude: { report: null, lastGood: null, installed: false }, "claude-work": TWO_STATES["claude-work"], codex: { report: null, lastGood: null, installed: false }, "opencode-go": { report: null, lastGood: null, installed: false }, agy: { report: null, lastGood: null, installed: false } };
   assert.equal(spendBarOn(effectivePrefs(), states, "opencode", ps), false);
 });

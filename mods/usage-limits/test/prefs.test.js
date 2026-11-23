@@ -4,10 +4,10 @@ import { effectivePrefs, inPanel, isFolded, isOnBar, isShown, spendOnBar, toggle
 
 test("layout presets apply until saved prefs exist", () => {
   const props = { hidden: ["codex"], hiddenWindows: ["claude:session"] };
-  assert.deepEqual(effectivePrefs(null, props), { hidden: ["codex"], hiddenWindows: ["claude:session"], showResetTime: false, showBars: true, sessionOnBar: [], panelHidden: [], folded: [], spendOnBar: {} });
-  assert.deepEqual(effectivePrefs({ hidden: [], hiddenWindows: [] }, props), { hidden: [], hiddenWindows: [], showResetTime: false, showBars: true, sessionOnBar: [], panelHidden: [], folded: [], spendOnBar: {} });
-  assert.deepEqual(effectivePrefs(null, {}), { hidden: [], hiddenWindows: [], showResetTime: false, showBars: true, sessionOnBar: [], panelHidden: [], folded: [], spendOnBar: {} });
-  assert.deepEqual(effectivePrefs(undefined, undefined), { hidden: [], hiddenWindows: [], showResetTime: false, showBars: true, sessionOnBar: [], panelHidden: [], folded: [], spendOnBar: {} });
+  assert.deepEqual(effectivePrefs(null, props), { hidden: ["codex"], hiddenWindows: ["claude:session"], shownWindows: [], showResetTime: false, showBars: true, sessionOnBar: [], panelHidden: [], folded: [], spendOnBar: {} });
+  assert.deepEqual(effectivePrefs({ hidden: [], hiddenWindows: [] }, props), { hidden: [], hiddenWindows: [], shownWindows: [], showResetTime: false, showBars: true, sessionOnBar: [], panelHidden: [], folded: [], spendOnBar: {} });
+  assert.deepEqual(effectivePrefs(null, {}), { hidden: [], hiddenWindows: [], shownWindows: [], showResetTime: false, showBars: true, sessionOnBar: [], panelHidden: [], folded: [], spendOnBar: {} });
+  assert.deepEqual(effectivePrefs(undefined, undefined), { hidden: [], hiddenWindows: [], shownWindows: [], showResetTime: false, showBars: true, sessionOnBar: [], panelHidden: [], folded: [], spendOnBar: {} });
 });
 
 test("anything not listed is shown, including new windows", () => {
@@ -111,5 +111,37 @@ test("every existing toggle keeps the new keys", () => {
   const p = toggleFolded(togglePanel(effectivePrefs(null, undefined), "pi"), "claude");
   for (const q of [toggleProvider(p, "codex"), toggleWindow(p, "claude", "session"), toggleShowResetTime(p), toggleShowBars(p), toggleOnBar(p, "calls")]) {
     assert.deepEqual([q.panelHidden, q.folded], [["pi"], ["claude"]]);
+  }
+});
+
+const OFF_BAR = true;
+
+test("a window off the bar by default: shown only once ticked, untouched by the opt-out list", () => {
+  const p = effectivePrefs(null, undefined);
+  assert.equal(isShown(p, "agy", "3p-5h", OFF_BAR), false);
+  assert.equal(isShown(p, "agy", "gemini-5h"), true);
+  const on = toggleWindow(p, "agy", "3p-5h", OFF_BAR);
+  assert.deepEqual([on.shownWindows, on.hiddenWindows], [["agy:3p-5h"], []]);
+  assert.equal(isShown(on, "agy", "3p-5h", OFF_BAR), true);
+  assert.equal(isShown(toggleProvider(on, "agy"), "agy", "3p-5h", OFF_BAR), false, "a hidden provider hides it too");
+  const off = toggleWindow(on, "agy", "3p-5h", OFF_BAR);
+  assert.deepEqual([off.shownWindows, isShown(off, "agy", "3p-5h", OFF_BAR)], [[], false]);
+  assert.deepEqual(p.shownWindows, [], "no mutation");
+  assert.equal(isShown({ hidden: [], hiddenWindows: ["agy:3p-5h"] }, "agy", "3p-5h", OFF_BAR), false, "hiddenWindows doesn't switch it on");
+});
+
+test("old saved prefs and presets read as before: no window ticked on, and the opt-out list still works", () => {
+  const old = { hidden: [], hiddenWindows: ["claude:session"], showResetTime: true };
+  const p = effectivePrefs(old, undefined);
+  assert.deepEqual(p.shownWindows, []);
+  assert.deepEqual([isShown(p, "claude", "session"), isShown(p, "claude", "weekly_all"), isShown(p, "agy", "3p-weekly", OFF_BAR)], [false, true, false]);
+  assert.deepEqual(effectivePrefs(null, { shownWindows: ["agy:3p-5h"] }).shownWindows, ["agy:3p-5h"], "a layout can preset it");
+  assert.deepEqual(toggleWindow(p, "claude", "session").hiddenWindows, [], "a window on the bar by default toggles in the opt-out list");
+});
+
+test("every toggle keeps the windows ticked on", () => {
+  const p = toggleWindow(effectivePrefs(null, undefined), "agy", "3p-5h", OFF_BAR);
+  for (const q of [toggleProvider(p, "codex"), toggleWindow(p, "claude", "session"), toggleShowResetTime(p), toggleShowBars(p), toggleOnBar(p, "calls"), togglePanel(p, "pi"), toggleFolded(p, "claude"), toggleSpendOnBar(p, "pi", false)]) {
+    assert.deepEqual(q.shownWindows, ["agy:3p-5h"]);
   }
 });

@@ -33,11 +33,14 @@ const ALL_OK = {
   "pi-spend.sh": () => ok(piSpend),
 };
 
+const AGY_NOT_INSTALLED = { "agy-limits.sh": missing };
+
 function answering(helpers, terminal = null) {
+  const known = { ...AGY_NOT_INSTALLED, ...helpers };
   return async (bin, args) => {
     if (bin === "hc") return ok(JSON.stringify(terminal));
     const name = args[0].split("/").pop();
-    const answer = helpers[name];
+    const answer = known[name];
     if (!answer) return failed();
     return answer(args);
   };
@@ -211,6 +214,24 @@ const SCENARIOS = {
     await s.press("ul-back");
     s.cx.timers[0][1](s.cx);
     await s.frame("session out of the panel, none of it on the bar: the account still marked");
+    return s.frames;
+  },
+
+  async antigravity() {
+    const bucket = (remaining) => ({ remaining_fraction: remaining, reset_time: "2026-11-06T08:00:00Z" });
+    const agySaved = JSON.stringify({
+      at: CLOCK_MS / 1000 - 120, plan: "Antigravity Starter Quota",
+      quota: { "gemini-5h": bucket(0.6), "gemini-weekly": bucket(0.2), "3p-5h": bucket(0.95), "3p-weekly": bucket(0.7) },
+    });
+    const s = session({ helpers: { ...ALL_OK, "agy-limits.sh": () => ok(agySaved) } });
+    s.start();
+    await s.frame("first render: Gemini's windows on the bar, the others' only in the panel");
+    await throughWidthsToSettings(s, [2000]);
+    await s.press("w-agy-3p-5h");
+    await s.frame("others' 5-hour ticked onto the bar");
+    await s.press("w-agy-3p-5h");
+    await s.press("w-agy-gemini-weekly");
+    await s.frame("others' 5-hour back off, Gemini's weekly off");
     return s.frames;
   },
 };

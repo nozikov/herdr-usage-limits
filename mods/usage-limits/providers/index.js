@@ -1,11 +1,12 @@
 import claude, { claudeAccount } from "./claude.js";
 import codex from "./codex.js";
+import agy from "./agy.js";
 import opencode from "./opencode.js";
 import opencodeGo from "./opencode-go.js";
 import pi from "./pi.js";
 import { accountTag, claudeAccounts } from "../lib/accounts.js";
 
-export const PROVIDERS = [claude, codex, opencode, opencodeGo, pi];
+export const PROVIDERS = [claude, codex, agy, opencode, opencodeGo, pi];
 
 const OTHERS = PROVIDERS.filter((p) => p !== claude);
 const MARKED_FROM_ACCOUNTS = 2;

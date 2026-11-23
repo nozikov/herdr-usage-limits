@@ -9,6 +9,7 @@ const gone = { report: null, lastGood: null, installed: false };
 const fresh = () => ({
   claude: { report: ok(claude, "claude-get-usage.max.json"), lastGood: ok(claude, "claude-get-usage.max.json"), installed: true },
   codex: { report: ok(codex, "codex-app-server.plus.json"), lastGood: ok(codex, "codex-app-server.plus.json"), installed: true },
+  agy: gone,
   "opencode-go": gone,
 });
 
@@ -26,8 +27,8 @@ export const scenarios = {
     s.codex.report = { ...s.codex.report, observedAt: NOW - 901 };
     return s;
   },
-  loadingAndMissing: () => ({ claude: { report: null, lastGood: null, installed: null }, codex: { report: null, lastGood: null, installed: false }, "opencode-go": gone }),
-  noState: () => ({ "opencode-go": gone }),
+  loadingAndMissing: () => ({ claude: { report: null, lastGood: null, installed: null }, codex: { report: null, lastGood: null, installed: false }, agy: gone, "opencode-go": gone }),
+  noState: () => ({ agy: gone, "opencode-go": gone }),
 };
 
 export const extraScenarios = {

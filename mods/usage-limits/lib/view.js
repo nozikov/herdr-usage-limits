@@ -180,7 +180,7 @@ function limitsBarGroup(p, st, now, prefs, active) {
   if (!isShown(prefs, p.id) || st?.installed === false) return null;
   const { mark, source } = barReading(st?.report ?? null, st?.lastGood ?? null);
   const segments = (source?.windows ?? [])
-    .filter((w) => isShown(prefs, p.id, w.id))
+    .filter((w) => isShown(prefs, p.id, w.id, w.offBarByDefault === true))
     .map((w) => segmentView(w, now, prefs.showResetTime));
   const dim = mark === FAILED_MARK || (source != null && isStale(source, now));
   return { providerId: p.id, name: p.name, icon: p.icon, mark, dim, segments, ...tagged(p), ...marked(p, active) };
