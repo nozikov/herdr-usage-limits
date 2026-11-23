@@ -50,8 +50,8 @@ export function sessionOnBar(s, prefs) {
   if (!s) return [];
   const c = context(s);
   return [
-    { id: "context", text: `ctx ${c.text}`, level: c.level },
-    { id: "calls", text: `⇄ ${s.calls}`, level: "ok" },
-    s.compactions != null ? { id: "compactions", text: `▼ ${s.compactions}`, level: "ok" } : null,
+    { id: "context", label: "ctx", icon: null, text: c.text, fill: c.fill, level: c.level },
+    { id: "calls", label: null, icon: "calls", text: String(s.calls), fill: null, level: "ok" },
+    s.compactions != null ? { id: "compactions", label: null, icon: "compactions", text: String(s.compactions), fill: null, level: "ok" } : null,
   ].filter((n) => n && isOnBar(prefs, n.id));
 }

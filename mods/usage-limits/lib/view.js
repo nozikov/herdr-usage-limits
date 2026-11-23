@@ -216,7 +216,15 @@ export function chooseDensity(model, widthPx, showBars = true) {
 }
 
 const SESSION_NUMBER_GAP_W = 14;
+const SESSION_ICON_W = 18;
+
+function sessionNumberWidth(n) {
+  const label = n.label != null ? LABEL_GAP_W + LABEL_CHAR_W * n.label.length : 0;
+  const icon = n.icon != null ? SESSION_ICON_W : 0;
+  const bar = n.fill != null ? SEGMENT_BAR_W + 5 : 0;
+  return CHAR_W * n.text.length + SESSION_NUMBER_GAP_W + label + icon + bar;
+}
 
 export function sessionNumbersWidth(numbers) {
-  return numbers.reduce((w, n) => w + CHAR_W * n.text.length + SESSION_NUMBER_GAP_W, numbers.length ? SESSION_NUMBER_GAP_W : 0);
+  return numbers.reduce((w, n) => w + sessionNumberWidth(n), numbers.length ? SESSION_NUMBER_GAP_W : 0);
 }
