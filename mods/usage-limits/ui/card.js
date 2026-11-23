@@ -73,7 +73,7 @@ export function limitsGroup(g, arrows, panel) {
   if (!s) return groupWithoutSummary(g, head, panel);
   const { t } = panel;
   return v_flex().gap(8).child(head
-    .child(g.failed ? failure(g.status, t) : rightLabel(s.long, t))
+    .child(g.failed ? failure(g.status, t) : rightLabel(g.foldedLabel ?? s.long, t))
     .child(foldedNumbers(g, s, t)));
 }
 
