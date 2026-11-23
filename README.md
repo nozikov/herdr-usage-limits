@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/hero.png" width="100%" alt="Always on the bar, everything on hover: the status bar with session numbers and Claude Code and Codex limits, and above it the hover panel with the session, Claude's limits in full, Codex folded to one line, and OpenCode and Pi with their tokens today and over 7 days">
+  <img src="assets/hero.png" width="100%" alt="Always on the bar, everything on hover: the status bar with Claude Code, Codex and Antigravity limits, and above it the hover panel with the session, Claude's limits in full, and Codex, Antigravity and OpenCode Go folded to one line each">
 </p>
 
 <h1 align="center">Usage limits for Herdr</h1>
@@ -61,7 +61,7 @@ From amber on, you also see the time left until the limit resets.
 ## Hover for everything
 
 <p align="center">
-  <img src="assets/card.png" width="440" alt="The hover panel: an OpenCode session with its model, context, calls and compactions, then Claude and Codex with their plan, last update and one line per limit with a bar, percent and time to reset, then OpenCode and Pi with their tokens today and over 7 days, with refresh and settings buttons">
+  <img src="assets/card.png" width="440" alt="The hover panel: an OpenCode session with its model, context, calls and compactions, then Claude, Codex and Antigravity with their plan, last update and one line per limit with a bar, percent and time to reset, OpenCode with its tokens today and over 7 days, OpenCode Go with its 5-hour, weekly and monthly limits, and Pi, with refresh and settings buttons">
 </p>
 
 Rest the pointer on the limits. The panel shows every limit and when it resets. Rest it on a
@@ -73,7 +73,7 @@ remembered. An arrow beside the name shows while the pointer is on it, and alway
 folded line or when the panel holds three providers or more.
 
 <p align="center">
-  <img src="assets/fold.png" width="440" alt="The same panel with Claude and Codex folded: each on one line with its tightest limit, 5-hour at 92% and 71%, then OpenCode and Pi">
+  <img src="assets/fold.png" width="440" alt="The same panel with Claude, Codex, Antigravity and OpenCode Go folded: each on one line with its tightest limit, then OpenCode and Pi">
 </p>
 
 OpenCode and Pi get one line each: `Tokens today / 7d`, with both numbers. They don't
@@ -108,7 +108,7 @@ For OpenCode and Pi the second line also names the agent and the model: `Pi · d
 ## Choose what the bar shows
 
 <p align="center">
-  <img src="assets/settings.png" width="440" alt="The settings side of the panel: a back arrow, Bar and Panel column headings, for each provider a Bar checkbox on the left and a Panel checkbox on the right, a Bar checkbox per limit, OpenCode and Pi off the bar and in the panel, Always show time to reset, Show bars, and This session with its Panel checkbox and Bar checkboxes for context, calls and compactions">
+  <img src="assets/settings.png" width="440" alt="The settings side of the panel: a back arrow, Bar and Panel column headings, for each provider a Bar checkbox on the left and a Panel checkbox on the right, a Bar checkbox per limit, Antigravity's two others limits off the bar, OpenCode and Pi off the bar and in the panel, Always show time to reset, Show bars, and This session with its Panel checkbox and Bar checkboxes for context, calls and compactions">
 </p>
 
 Click ⚙ in the panel. Each provider has two boxes: the left one, under **Bar**, is about
@@ -186,6 +186,14 @@ If you run Claude Code with more than one config folder (`CLAUDE_CONFIG_DIR`), l
 in the block's props. Each one is its own provider: its own group on the bar, its own
 section in the panel with its plan, its own row in the settings.
 
+<p align="center">
+  <img src="assets/accounts-bar.png" width="100%" alt="The status bar with two Claude accounts: the second named work, with a dot before its icon because the focused session runs on it">
+</p>
+
+<p align="center">
+  <img src="assets/accounts-card.png" width="440" alt="The hover panel with two Claude accounts, Claude on Max and Claude Work on Pro, the second marked with a dot and this session, then Codex, OpenCode and Pi">
+</p>
+
 ```json
 { "id": "usage-limits", "type": "block", "size": { "weight": 2.2 }, "min": 130,
   "content": { "mod": "usage-limits", "props": { "claudeAccounts": [
@@ -206,6 +214,14 @@ section in the panel with its plan, its own row in the settings.
 - Without `claudeAccounts`, nothing changes: one Claude, from Herdr's own environment.
 
 ### Antigravity (agy)
+
+<p align="center">
+  <img src="assets/agy-bar.png" width="100%" alt="The status bar with Claude, Codex and Antigravity: Gemini's 5-hour and weekly limits">
+</p>
+
+<p align="center">
+  <img src="assets/agy-card.png" width="440" alt="The hover panel with Antigravity on Pro: 5-hour and weekly for Gemini, and 5-hour and weekly for the other models">
+</p>
 
 agy gives its limits only to its status line command. To see them here, add the mod's
 hook to agy's settings, `~/.gemini/antigravity-cli/settings.json`:
