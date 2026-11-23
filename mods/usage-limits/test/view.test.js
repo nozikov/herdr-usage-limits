@@ -253,7 +253,7 @@ const GONE = { report: null, lastGood: null, installed: false };
 const strip = (m) => {
   const { arrows, ...rest } = m;
   assert.equal(typeof arrows, "boolean");
-  return { ...rest, groups: rest.groups.map(({ kind, folded, summary, ...g }) => (assert.equal(kind, "limits"), assert.equal(folded, false), g)) };
+  return { ...rest, groups: rest.groups.map(({ kind, folded, summary, foldedLabel, ...g }) => (assert.equal(kind, "limits"), assert.equal(folded, false), g)) };
 };
 
 test("spendReport: ok, no windows, today and week", () => {
@@ -287,6 +287,19 @@ test("card: a limits provider with no state still loads, a spend one with no sta
   assert.deepEqual(m.groups.map((g) => [g.providerId, g.status, g.summary]), [["claude", "loading…", null], ["codex", "loading…", null]]);
   assert.deepEqual(barModel({}, DEFAULTS, NOW, WITH_SPEND).groups.map((g) => [g.providerId, g.mark]), [["claude", "…"], ["codex", "…"]]);
   assert.deepEqual(cardModel({ opencode: NONE }, NOW, [OC]).groups, []);
+});
+
+test("card: a folded group names its tightest window in full when it fits beside the name and plan, else briefly", () => {
+  const folded = (name, plan, w) => {
+    const p = { ...claude, id: "x", name };
+    const st = { x: { report: okReport("x", NOW, [w], plan), lastGood: null, installed: true } };
+    return cardModel(st, NOW, [p], { ...DEFAULTS, folded: ["x"] }).groups[0].foldedLabel;
+  };
+  const fiveHour = makeWindow({ id: "5h", short: "5h", long: "5-hour", percent: 80, resetsAt: NOW + 600, durationSec: 18000 });
+  assert.equal(folded("Claude", "max", fiveHour), "5-hour");
+  assert.equal(folded("Codex", "plus", fiveHour), "5-hour");
+  assert.equal(folded("OpenCode Go", null, { ...fiveHour, long: "Weekly" }), "Weekly");
+  assert.equal(folded("Antigravity", "pro", fiveHour), "5h");
 });
 
 test("card: a folded group carries its tightest row as summary and keeps its rows", () => {

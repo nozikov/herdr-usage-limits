@@ -113,18 +113,34 @@ function spendGroup(p, st, now) {
 
 const LOADING = { status: "loading…", failed: false, dim: false, age: null };
 
+const FOLDED_ROOM_W = 121;
+const NAME_CHAR_W = 7.5;
+const PLAN_CHAR_W = 6;
+const PLAN_PAD_W = 16;
+const FOLDED_LABEL_CHAR_W = 6;
+
+function foldedLabel(name, plan, w) {
+  if (!w) return null;
+  const header = NAME_CHAR_W * name.length + (plan ? PLAN_CHAR_W * plan.length + PLAN_PAD_W : 0);
+  return FOLDED_LABEL_CHAR_W * w.long.length <= FOLDED_ROOM_W - header ? w.long : w.short;
+}
+
+const planOf = (report) => (report?.status === "ok" && report.plan ? capitalized(report.plan) : null);
+
 function limitsGroup(p, st, now, prefs) {
   const { report = null, lastGood = null } = st ?? {};
   const windows = (report?.status === "ok" ? report.windows : lastGood?.windows) ?? [];
   const closest = tightest(windows, now);
+  const plan = planOf(report);
   return {
     providerId: p.id, name: p.name, icon: p.icon,
-    plan: report?.status === "ok" && report.plan ? capitalized(report.plan) : null,
+    plan,
     ...(report ? readingStatus(report, lastGood, now) : LOADING),
     rows: report ? windows.map((w) => cardRow(w, now)) : [],
     kind: "limits",
     folded: isFolded(prefs, p.id),
     summary: report && closest ? cardRow(closest, now) : null,
+    foldedLabel: foldedLabel(p.name, plan, closest),
   };
 }
 
