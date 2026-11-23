@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import agy from "../providers/agy.js";
 import { PROVIDERS } from "../providers/index.js";
+import { segmentView } from "../lib/view.js";
 import { MOD, NOW } from "./_util.js";
 import { run } from "./_helpers.js";
 
@@ -42,9 +43,10 @@ test("plan: the Antigravity prefix and the Quota suffix go", () => {
   assert.deepEqual([plan("Antigravity Starter Quota"), plan("antigravity pro"), plan("Ultra"), plan(null), plan(""), plan(7)], ["Starter", "pro", "Ultra", null, null, null]);
 });
 
-test("a reset that has passed since it was saved → 0% and no reset time", () => {
+test("a reset that has passed since it was saved keeps its time, so the bar shows a dash like any other provider", () => {
   const r = agy.parse(saved({ "gemini-weekly": bucket(0.1, PASSED) }), NOW);
-  assert.deepEqual([r.windows[0].percent, r.windows[0].resetsAt], [0, null]);
+  assert.equal(r.windows[0].resetsAt, NOW - 5);
+  assert.equal(segmentView(r.windows[0], NOW).text, "—");
 });
 
 test("no reset_time → the saved time + reset_in_seconds", () => {
