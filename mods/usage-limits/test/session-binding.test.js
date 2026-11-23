@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { codexBinding, parseSessionChoices, sessionReadResult } from "../lib/session-binding.js";
+import { codexBinding, parseSessionChoices, sessionAccount, sessionReadResult } from "../lib/session-binding.js";
 
 const id = "01a1d088-0c3f-7b53-ba61-390c96962e3e";
 const own = { term: { pid: 123, id, identity: "process start" } };
@@ -37,4 +37,20 @@ test("session choices: filters invalid rows and refuses another process's respon
 test("session result: a selected session retains its change control while usage is unavailable", () => {
   const result = sessionReadResult({ code: 1, stdout: "" }, "codex", { manual: true }, 123, "project");
   assert.deepEqual(result, { session: null, choices: null, manual: true });
+});
+
+test("session account: Claude's helper names the account in use, with or without numbers", () => {
+  const r = sessionReadResult({ code: 0, stdout: "account=2\ntokens=5 calls=1 compactions=0\n" }, "claude", null, 123, "p");
+  assert.equal(r.account, 2);
+  assert.equal(r.session.data.tokens, 5);
+  assert.equal(sessionAccount({ code: 1, stdout: "account=1\n" }, "claude"), 1);
+  assert.equal(sessionAccount({ code: 0, stdout: "tokens=5 calls=1\n" }, "claude"), null);
+  assert.equal(sessionAccount({ code: 0, stdout: "account=2\n" }, "codex"), null);
+  assert.equal(sessionAccount({ code: 124, stdout: "account=2\n" }, "claude"), null);
+  assert.equal(sessionAccount({ code: 0, stdout: "account=0\n" }, "claude"), null);
+  assert.equal(sessionAccount({ code: 0, stdout: "xaccount=2\n" }, "claude"), null);
+});
+
+test("session account: no account line keeps the result as before", () => {
+  assert.equal(Object.hasOwn(sessionReadResult({ code: 0, stdout: "tokens=5 calls=1" }, "claude", null, 1, "p"), "account"), false);
 });

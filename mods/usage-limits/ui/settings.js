@@ -82,7 +82,7 @@ export function settingsPanel(canGoBack, states, panel) {
     .child(header(canGoBack, act, t))
     .child(h_flex().items_center().text_size(11).text_color(t.dim)
       .child(div().child("Bar")).child(div().flex_1()).child(div().child("Panel")))
-    .child(v_flex().gap(1).children(settingsRows(prefs, states).flatMap((row) => providerChecks(row, act, t))))
+    .child(v_flex().gap(1).children(settingsRows(prefs, states, panel.providers).flatMap((row) => providerChecks(row, act, t))))
     .child(rule(t))
     .child(check({ id: "opt-reset-time", on: prefs.showResetTime, label: [text("Always show time to reset", t.foreground)], onToggle: act.toggleResetTime }, t))
     .child(check({ id: "opt-bars", on: prefs.showBars, label: [text("Show bars", t.foreground)], onToggle: act.toggleBars }, t))

@@ -128,13 +128,19 @@ function limitsGroup(p, st, now, prefs) {
   };
 }
 
+const marked = (p, active) => (p.id === active ? { active: true } : {});
+const tagged = (p) => (p.tag ? { tag: p.tag } : {});
+
 function panelGroup(p, st, now, prefs) {
   if (!inPanel(prefs, p.id) || st?.installed === false) return null;
   return isSpend(p) ? spendGroup(p, st, now) : limitsGroup(p, st, now, prefs);
 }
 
-export function cardModel(states, now, providers = PROVIDERS, prefs = effectivePrefs()) {
-  const groups = providers.map((p) => panelGroup(p, states[p.id], now, prefs)).filter(Boolean);
+export function cardModel(states, now, providers = PROVIDERS, prefs = effectivePrefs(), active = null) {
+  const groups = providers.map((p) => {
+    const g = panelGroup(p, states[p.id], now, prefs);
+    return g && { ...g, ...marked(p, active) };
+  }).filter(Boolean);
   return { groups, empty: groups.length === 0, arrows: groups.length >= 3 };
 }
 
@@ -170,24 +176,24 @@ function barReading(report, lastGood) {
   return { mark: null, source: report };
 }
 
-function limitsBarGroup(p, st, now, prefs) {
+function limitsBarGroup(p, st, now, prefs, active) {
   if (!isShown(prefs, p.id) || st?.installed === false) return null;
   const { mark, source } = barReading(st?.report ?? null, st?.lastGood ?? null);
   const segments = (source?.windows ?? [])
     .filter((w) => isShown(prefs, p.id, w.id))
     .map((w) => segmentView(w, now, prefs.showResetTime));
   const dim = mark === FAILED_MARK || (source != null && isStale(source, now));
-  return { providerId: p.id, name: p.name, icon: p.icon, mark, dim, segments };
+  return { providerId: p.id, name: p.name, icon: p.icon, mark, dim, segments, ...tagged(p), ...marked(p, active) };
 }
 
-export function barModel(states, prefs, now, providers = PROVIDERS) {
+export function barModel(states, prefs, now, providers = PROVIDERS, active = null) {
   let spendDefaultOn = null;
   const spendShown = (id) => () => {
     spendDefaultOn ??= spendDefault(states, prefs, providers);
     return spendOnBar(prefs, id, spendDefaultOn);
   };
   const groups = providers
-    .map((p) => (isSpend(p) ? spendBarGroup(p, states[p.id], now, spendShown(p.id)) : limitsBarGroup(p, states[p.id], now, prefs)))
+    .map((p) => (isSpend(p) ? spendBarGroup(p, states[p.id], now, spendShown(p.id)) : limitsBarGroup(p, states[p.id], now, prefs, active)))
     .filter(Boolean);
   return { groups, empty: groups.length === 0 };
 }
@@ -208,7 +214,13 @@ function segmentWidth(s, density) {
   return density === DENSITY.NO_BARS ? label + text : label + SEGMENT_BAR_W + text;
 }
 
-const groupWidth = (g, density) => GROUP_W + (g.spend != null ? spendWidth(g) : 0) + g.segments.reduce((a, s) => a + segmentWidth(s, density), 0);
+const TAG_GAP_W = 4;
+const ACTIVE_DOT_W = 6 + 10;
+
+const tagWidth = (g) => (g.tag != null ? TAG_GAP_W + LABEL_CHAR_W * g.tag.length : 0);
+const activeWidth = (g) => (g.active ? ACTIVE_DOT_W : 0);
+
+const groupWidth = (g, density) => GROUP_W + tagWidth(g) + activeWidth(g) + (g.spend != null ? spendWidth(g) : 0) + g.segments.reduce((a, s) => a + segmentWidth(s, density), 0);
 
 export function chooseDensity(model, widthPx, showBars = true) {
   const steps = showBars ? [DENSITY.FULL, DENSITY.NO_BARS, DENSITY.NO_LABELS, DENSITY.BRIEF] : [DENSITY.NO_BARS, DENSITY.NO_LABELS, DENSITY.BRIEF];

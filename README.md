@@ -177,6 +177,31 @@ Give the block more weight if you want the bars to stay when a window gets tight
 If your status row is drawn without lines, `"props": { "border": false }` in the
 `usage-limits` content drops the line above the bar.
 
+### Several Claude accounts
+
+If you run Claude Code with more than one config folder (`CLAUDE_CONFIG_DIR`), list them
+in the block's props. Each one is its own provider: its own group on the bar, its own
+section in the panel with its plan, its own row in the settings.
+
+```json
+{ "id": "usage-limits", "type": "block", "size": { "weight": 2.2 }, "min": 130,
+  "content": { "mod": "usage-limits", "props": { "claudeAccounts": [
+    { "configDir": "~/.claude" },
+    { "configDir": "~/.claude-work", "name": "Claude Work" } ] } } }
+```
+
+- `configDir` is required; `~/` is your home. `name` and `id` are optional. The first
+  account keeps the id `claude` and the name Claude, and so your saved choices for it;
+  the others get `claude-<suffix>` from the folder, e.g. `claude-work` and Claude Work.
+- On the bar the first account looks as before. The others add a short name after
+  the icon: `work`.
+- The account the focused terminal's Claude Code runs on gets a dot before its icon,
+  and a dot and "this session" in its panel header. Another agent, or none: no dot.
+- Each account's `claude` is asked on its own, every 5 minutes.
+- `~/.claude` is asked with `CLAUDE_CONFIG_DIR` unset, as Claude Code's default sign-in
+  expects.
+- Without `claudeAccounts`, nothing changes: one Claude, from Herdr's own environment.
+
 ## What it runs
 
 - `sh`, your `claude` CLI and your `codex` CLI, each briefly, every 5 minutes. They use their own sign-ins and talk to Anthropic and OpenAI. Apart from the OpenCode Go request below, the mod makes no network requests itself.

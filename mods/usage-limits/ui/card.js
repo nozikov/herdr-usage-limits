@@ -1,9 +1,13 @@
 import { div, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
-import { DIMMED, LEFT_COLUMN_W, NO_READING, PERCENT_COLUMN_W, levelColor, limitNumberColor, modIcon, numberCell, providerIcon, usageBar } from "./kit.js";
+import { DIMMED, LEFT_COLUMN_W, NO_READING, PERCENT_COLUMN_W, activeAccountDot, levelColor, limitNumberColor, modIcon, numberCell, providerIcon, usageBar } from "./kit.js";
 
 const PANEL_BAR_W = 110;
 const FOLDED_BAR_W = 44;
+const THIS_SESSION = "this session";
+
+const thisSession = (t) => h_flex().gap(4).items_center().flex_none().text_size(10.5).text_color(t.accent)
+  .child(activeAccountDot(t)).child(THIS_SESSION);
 
 function cardRow(r, providerId, t) {
   return v_flex().gap(3)
@@ -42,6 +46,7 @@ function header(g, arrows, panel) {
     .child(providerIcon(id, g.icon, t.foreground))
     .child(div().flex_none().font_semibold().child(g.name))
     .when(g.plan != null, (e) => e.child(div().flex_none().px(5).rounded(4).bg(t.raised).text_size(10).text_color(t.accent).child(g.plan)))
+    .when(g.active === true, (e) => e.child(thisSession(t)))
     .when(g.folded || arrows || panel.hovered === id, (e) => e.child(svg(modIcon(arrow)).size(12).text_color(t.dim)));
 }
 

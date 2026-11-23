@@ -4,6 +4,7 @@ const ID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
 const MAX_CHOICES = 12;
 const MAX_TEXT = 100;
 const CHOICES_EXIT_CODE = 2;
+const NO_READING_EXIT_CODE = 1;
 export const KEY_BINDINGS = "usage-limits.session-bindings";
 
 const isSessionId = (id) => ID.test(id ?? "");
@@ -33,11 +34,22 @@ export function parseSessionChoices(text, pid) {
   } catch { return null; }
 }
 
+const ACCOUNT_LINE = /(?:^|\s)account=([1-9]\d{0,2})(?:\s|$)/;
+const ACCOUNT_EXIT_CODES = [0, NO_READING_EXIT_CODE];
+
+export function sessionAccount(result, app) {
+  if (app !== "claude" || !ACCOUNT_EXIT_CODES.includes(result.code)) return null;
+  const m = ACCOUNT_LINE.exec(result.stdout ?? "");
+  return m ? Number(m[1]) : null;
+}
+
 export function sessionReadResult(result, app, binding, pid, title) {
   const data = result.code === 0 ? parseSession(result.stdout, app) : null;
+  const account = sessionAccount(result, app);
   return {
     session: data ? { data, title } : null,
     choices: app === "codex" && result.code === CHOICES_EXIT_CODE ? parseSessionChoices(result.stdout, pid) : null,
     manual: Boolean(binding?.manual),
+    ...(account != null ? { account } : {}),
   };
 }

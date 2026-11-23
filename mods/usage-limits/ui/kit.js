@@ -36,6 +36,9 @@ export function usageBar(width, fill, tick, color, t) {
     .when(tick != null, (b) => b.child(div().absolute().top(-2).left(Math.round(width * tick)).w(1).h(8).bg(t.foreground).opacity(0.75)));
 }
 
+const ACTIVE_ACCOUNT_DOT_SIZE = 6;
+export const activeAccountDot = (t) => div().size(ACTIVE_ACCOUNT_DOT_SIZE).rounded(ACTIVE_ACCOUNT_DOT_SIZE / 2).bg(t.accent).flex_none();
+
 export const divider = (t) => div().w(1).h(14).bg(t.border).flex_none();
 
 export const rule = (t) => div().h(1).bg(t.border).flex_none();
