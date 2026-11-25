@@ -218,12 +218,10 @@ const SCENARIOS = {
   },
 
   async antigravity() {
-    const bucket = (remaining) => ({ remaining_fraction: remaining, reset_time: "2026-11-06T08:00:00Z" });
-    const agySaved = JSON.stringify({
-      at: CLOCK_MS / 1000 - 120, plan: "Antigravity Starter Quota",
-      quota: { "gemini-5h": bucket(0.6), "gemini-weekly": bucket(0.2), "3p-5h": bucket(0.95), "3p-weekly": bucket(0.7) },
-    });
-    const s = session({ helpers: { ...ALL_OK, "agy-limits.sh": () => ok(agySaved) } });
+    const bucket = (id, remaining) => ({ id, remaining_fraction: remaining, reset_time: "2026-11-06T08:00:00Z" });
+    const buckets = [bucket("gemini-5h", 0.6), bucket("gemini-weekly", 0.2), bucket("3p-5h", 0.95), bucket("3p-weekly", 0.7)];
+    const agyReply = JSON.stringify({ status: "SUCCESS", command: { data: { groups: [{ buckets }] } } });
+    const s = session({ helpers: { ...ALL_OK, "agy-limits.sh": () => ok(agyReply) } });
     s.start();
     await s.frame("first render: Gemini's windows on the bar, the others' only in the panel");
     await throughWidthsToSettings(s, [2000]);
