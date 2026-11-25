@@ -28,7 +28,7 @@ See how much Claude Code and Codex you have left, right in Herdr's status bar:
 - **Your current session:** how full the context is, how many messages you've sent, how many times it was compacted.
 - **OpenCode and Pi:** the tokens they used today and over the last 7 days. They have no limits to show.
 - **OpenCode Go:** your 5-hour, weekly and monthly allowance, with a bar and a percent each.
-- **Antigravity:** Gemini's 5-hour and weekly limits, from agy's status line.
+- **Antigravity:** Gemini's 5-hour and weekly limits, asked from your `agy` CLI.
 - **Several Claude accounts:** each with its own limits, and a dot on the one your session runs on.
 
 OpenCode session statistics support both legacy and current SQLite storage automatically.
@@ -120,7 +120,7 @@ remembered across restarts.
 
 - **Claude, Codex and their limits** are on by default. Untick what you don't watch.
 - **OpenCode Go** is on by default when a key is found: rolling 5-hour, weekly and monthly, each from OpenCode's own usage endpoint.
-- **Antigravity** is on by default once its hook has saved a reading: Gemini's 5-hour and weekly. Its `others` limits are in the panel and off the bar until you tick them.
+- **Antigravity** is on by default when `agy` is installed: Gemini's 5-hour and weekly. Its `others` limits are in the panel and off the bar until you tick them.
 - **OpenCode and Pi** put today's tokens on the bar: `today 240k`. They're off the bar by default, unless no provider with limits has any numbers; then they're on.
 - **Always show time to reset** adds the time to every limit, green ones too.
 - **Show bars** keeps a bar beside each limit. Untick it for numbers only.
@@ -220,32 +220,27 @@ section in the panel with its plan, its own row in the settings.
 </p>
 
 <p align="center">
-  <img src="assets/agy-card.png" width="440" alt="The hover panel with Antigravity on Pro: 5-hour and weekly for Gemini, and 5-hour and weekly for the other models">
+  <img src="assets/agy-card.png" width="440" alt="The hover panel with Antigravity: 5-hour and weekly for Gemini, and 5-hour and weekly for the other models">
 </p>
 
-agy gives its limits only to its status line command. To see them here, add the mod's
-hook to agy's settings, `~/.gemini/antigravity-cli/settings.json`:
-
-```json
-"statusLine": { "type": "command", "stack_with_default": true,
-  "command": "sh \"$HOME/.config/herdr-app/mods/usage-limits/helpers/agy-statusline.sh\"" }
-```
+Nothing to set up: install `agy` (1.1.11 or newer), sign in once, and its limits are there.
 
 - The bar shows Gemini's 5-hour and weekly limits. The panel adds `others`: the Claude
   and GPT models you run inside Antigravity, on Antigravity's quota, not your own Claude
   subscription. They're off the bar by default; tick them in the settings to put them there.
-- The hook prints nothing, so agy's own status line stays as it is. It saves only the
-  quota, the plan and the time (never the conversation) to
-  `~/.cache/herdr-usage-limits/antigravity.json`, readable only by you. Needs `jq`.
-- The numbers are as fresh as agy's last status line: open agy once to see them. An old
-  reading shows dimmed, and a reset that has passed since shows `—`.
-- Several agy at once are fine: each limit keeps the newest reading.
+- Every 5 minutes the mod asks `agy -p "/usage"`, which answers from your account with no
+  prompt sent: no tokens, no conversation. The plan's name isn't in the answer, so the
+  panel shows none. Your plan decides which limits there are: Starter has weekly ones only.
+- Before asking it checks that agy is signed in (`agy models`), because a signed-out agy
+  would open its sign-in page in your browser. Signed out, the panel says so instead.
+- Set up the status line hook of an earlier version? Remove `statusLine` from
+  `~/.gemini/antigravity-cli/settings.json`; its script is gone.
 - Without agy installed (`agy` on your PATH or in `~/.local/bin`), Antigravity stays off
   the bar and out of the panel, as Codex does.
 
 ## What it runs
 
-- `sh`, your `claude` CLI and your `codex` CLI, each briefly, every 5 minutes. They use their own sign-ins and talk to Anthropic and OpenAI. Apart from the OpenCode Go request below, the mod makes no network requests itself.
+- `sh`, your `claude` CLI, your `codex` CLI and your `agy` CLI, each briefly, every 5 minutes. They use their own sign-ins and talk to Anthropic, OpenAI and Google. Apart from the OpenCode Go request below, the mod makes no network requests itself.
 - `curl`, once every 5 minutes, to `https://opencode.ai/zen/go/v1/usage`, with the
   personal API key from `$HERDR_USAGE_OPENCODE_GO_KEY`, or from the `opencode-go` (or
   `opencode`) entry of `~/.local/share/opencode/auth.json`, `~/.config/opencode/auth.json`
@@ -280,8 +275,8 @@ hook to agy's settings, `~/.gemini/antigravity-cli/settings.json`:
   midnight (today and six previous days), and deduplicate migrated session IDs.
 - It sends no prompt and starts no turn, so it uses no model time.
 - With `claudeAccounts`, each account's `claude` is asked with its own `CLAUDE_CONFIG_DIR`, and the focused session's log is looked up in each account's folder.
-- For Antigravity it reads only `~/.cache/herdr-usage-limits/antigravity.json`, which its status line hook writes with `jq`. It never runs `agy`.
-- It changes no Claude Code, Codex, OpenCode, Pi or Antigravity settings. The agy hook is one you add yourself.
+- For Antigravity it runs `agy --version`, `agy models` and `agy -p "/usage"`, with their log sent to a temporary folder that is deleted after. agy keeps its own small state files, as on any run.
+- It changes no Claude Code, Codex, OpenCode, Pi or Antigravity settings.
 
 > [!NOTE]
 > `get_usage` is an internal Claude Code interface, checked on 2.1.317. If an update changes it, Claude shows `!` with the error instead of numbers.

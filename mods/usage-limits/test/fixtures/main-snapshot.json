@@ -193618,38 +193618,6 @@
                ]
               },
               {
-               "kind": "div",
-               "args": [],
-               "style": [
-                [
-                 "bg",
-                 "theme.raised"
-                ],
-                [
-                 "flex_none"
-                ],
-                [
-                 "px",
-                 5
-                ],
-                [
-                 "rounded",
-                 4
-                ],
-                [
-                 "text_color",
-                 "theme.accent"
-                ],
-                [
-                 "text_size",
-                 10
-                ]
-               ],
-               "children": [
-                "Starter"
-               ]
-              },
-              {
                "kind": "svg",
                "args": [
                 "mods/usage-limits/icons/chevron-down.svg"
@@ -193697,7 +193665,7 @@
                 ]
                ],
                "children": [
-                "updated 2 min ago"
+                "updated just now"
                ]
               }
              ]
@@ -197995,9 +197963,9 @@
        "report": {
         "status": "ok",
         "message": null,
-        "plan": "Starter",
-        "observedAt": 1793779080,
-        "source": "agy status line",
+        "plan": null,
+        "observedAt": 1793779200,
+        "source": "agy CLI",
         "windows": [
          {
           "id": "gemini-5h",
@@ -198038,9 +198006,9 @@
        "lastGood": {
         "status": "ok",
         "message": null,
-        "plan": "Starter",
-        "observedAt": 1793779080,
-        "source": "agy status line",
+        "plan": null,
+        "observedAt": 1793779200,
+        "source": "agy CLI",
         "windows": [
          {
           "id": "gemini-5h",
@@ -198211,9 +198179,9 @@
        "report": {
         "status": "ok",
         "message": null,
-        "plan": "Starter",
-        "observedAt": 1793779080,
-        "source": "agy status line",
+        "plan": null,
+        "observedAt": 1793779200,
+        "source": "agy CLI",
         "windows": [
          {
           "id": "gemini-5h",
@@ -198254,9 +198222,9 @@
        "lastGood": {
         "status": "ok",
         "message": null,
-        "plan": "Starter",
-        "observedAt": 1793779080,
-        "source": "agy status line",
+        "plan": null,
+        "observedAt": 1793779200,
+        "source": "agy CLI",
         "windows": [
          {
           "id": "gemini-5h",
@@ -198454,9 +198422,9 @@
        "report": {
         "status": "ok",
         "message": null,
-        "plan": "Starter",
-        "observedAt": 1793779080,
-        "source": "agy status line",
+        "plan": null,
+        "observedAt": 1793779200,
+        "source": "agy CLI",
         "windows": [
          {
           "id": "gemini-5h",
@@ -198497,9 +198465,9 @@
        "lastGood": {
         "status": "ok",
         "message": null,
-        "plan": "Starter",
-        "observedAt": 1793779080,
-        "source": "agy status line",
+        "plan": null,
+        "observedAt": 1793779200,
+        "source": "agy CLI",
         "windows": [
          {
           "id": "gemini-5h",
@@ -198766,9 +198734,9 @@
        "report": {
         "status": "ok",
         "message": null,
-        "plan": "Starter",
-        "observedAt": 1793779080,
-        "source": "agy status line",
+        "plan": null,
+        "observedAt": 1793779200,
+        "source": "agy CLI",
         "windows": [
          {
           "id": "gemini-5h",
@@ -198809,9 +198777,9 @@
        "lastGood": {
         "status": "ok",
         "message": null,
-        "plan": "Starter",
-        "observedAt": 1793779080,
-        "source": "agy status line",
+        "plan": null,
+        "observedAt": 1793779200,
+        "source": "agy CLI",
         "windows": [
          {
           "id": "gemini-5h",
@@ -200674,38 +200642,6 @@
                ]
               },
               {
-               "kind": "div",
-               "args": [],
-               "style": [
-                [
-                 "bg",
-                 "theme.raised"
-                ],
-                [
-                 "flex_none"
-                ],
-                [
-                 "px",
-                 5
-                ],
-                [
-                 "rounded",
-                 4
-                ],
-                [
-                 "text_color",
-                 "theme.accent"
-                ],
-                [
-                 "text_size",
-                 10
-                ]
-               ],
-               "children": [
-                "Starter"
-               ]
-              },
-              {
                "kind": "svg",
                "args": [
                 "mods/usage-limits/icons/chevron-down.svg"
@@ -200753,7 +200689,7 @@
                 ]
                ],
                "children": [
-                "updated 2 min ago"
+                "updated just now"
                ]
               }
              ]
@@ -206375,38 +206311,6 @@
                ]
               },
               {
-               "kind": "div",
-               "args": [],
-               "style": [
-                [
-                 "bg",
-                 "theme.raised"
-                ],
-                [
-                 "flex_none"
-                ],
-                [
-                 "px",
-                 5
-                ],
-                [
-                 "rounded",
-                 4
-                ],
-                [
-                 "text_color",
-                 "theme.accent"
-                ],
-                [
-                 "text_size",
-                 10
-                ]
-               ],
-               "children": [
-                "Starter"
-               ]
-              },
-              {
                "kind": "svg",
                "args": [
                 "mods/usage-limits/icons/chevron-down.svg"
@@ -206454,7 +206358,7 @@
                 ]
                ],
                "children": [
-                "updated 2 min ago"
+                "updated just now"
                ]
               }
              ]

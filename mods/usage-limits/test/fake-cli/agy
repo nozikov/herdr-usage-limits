@@ -1,0 +1,25 @@
+#!/bin/sh
+here=$(dirname "$0")
+[ -n "$AGY_CALLS" ] && echo "$*" >>"$AGY_CALLS"
+case " $* " in
+  *" --version "*)
+    if [ "$FAKE_AGY" = "hang-version" ]; then exec sleep 61; fi
+    echo "${FAKE_AGY_VERSION-1.5.17}"
+    ;;
+  *" models "*)
+    case "$FAKE_AGY" in
+      signed-out) echo "Error: Please sign in to view available models. Launch the CLI without arguments to sign in." >&2; exit 1 ;;
+      offline) echo "Error: timed out waiting for available models" >&2; exit 1 ;;
+      hang-models) exec sleep 61 ;;
+    esac
+    echo "gemini-3.8-flash-high	Gemini 3.8 Flash (High)"
+    ;;
+  *" /usage "*)
+    case "$FAKE_AGY" in
+      hang) exec sleep 61 ;;
+      error) echo '{"status":"ERROR","response":"","error":"/usage failed: Post \"https://example.test\": connection refused"}'; exit 1 ;;
+      silent) exit 1 ;;
+    esac
+    cat "$here/../fixtures/agy-usage.json"
+    ;;
+esac

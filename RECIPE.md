@@ -180,16 +180,18 @@ on the bar and in the panel. The only key it reads is the OpenCode Go key.
     "not installed", "failing with a last good reading" and "stale" work as for
     limits. `providers/index.js` lists them
     in order. A new provider is one more file there plus its helper.
-    `providers/agy.js`: Antigravity, from the file its status line hook saves;
-    each `quota` bucket is a window, used = 1 − `remaining_fraction`, reset
-    from `reset_time` (ISO 8601), else the saved time + `reset_in_seconds`.
+    `providers/agy.js`: Antigravity, from `agy -p /usage`'s JSON;
+    each `command.data.groups[].buckets[]` is a window, used = 1 −
+    `remaining_fraction`, reset from `reset_time` (ISO 8601).
     `gemini-5h` / `gemini-weekly` → `5h` `5-hour` / `wk` `Weekly`; `3p-5h` /
     `3p-weekly` → `others 5h` `5-hour · others` / `others wk` `Weekly ·
     others`, marked `offBarByDefault`, as any `3p-*` is. In that order; an
-    unknown bucket comes after, by key, named from it (`beta-5h` → `beta 5h`,
-    `5-hour · beta`), and one without a number is left out. Plan: `plan_tier`
-    without a leading `Antigravity ` and a trailing ` Quota`. `observedAt` is
-    the saved time. No file yet: unavailable, "Open agy once to see its limits".
+    unknown bucket comes after, by id, named from it (`beta-5h` → `beta 5h`,
+    `5-hour · beta`), and one without a number is left out. No plan:
+    the answer holds none. `{"problem"}` from the helper: `old-version` →
+    unavailable, "Needs agy 1.1.11 or newer"; `signed-out` → unavailable, "Sign
+    in to agy to see its limits"; `unreachable` → error, "agy couldn't reach
+    Antigravity". A `status` other than `SUCCESS` is an error.
   - `icons/`: the mod's own (`gauge`, `refresh`, `gear`, `back`,
     `chevron-down`, `chevron-right`); the agents' icons come from Herdr's.
   - `lib/`: pure, tested with `node --test`: `report.js` (shapes below),
@@ -241,17 +243,12 @@ on the bar and in the panel. The only key it reads is the OpenCode Go key.
     folder or file inside it that can't be read is left out and the rest
     counted. It has no deadline of its own: `io/helpers.js` runs every spend
     helper with a 15 s `exec` timeout.
-  - `helpers/agy-statusline.sh`: agy's `statusLine` command (with
-    `stack_with_default`, so agy draws its own line too). Reads agy's JSON on
-    stdin, prints nothing, keeps `{ at (epoch s), plan (plan_tier), quota }`
-    in `${XDG_CACHE_HOME:-~/.cache}/herdr-usage-limits/antigravity.json`
-    (`HERDR_USAGE_AGY_CACHE`), under `umask 077`, written to a temp file and
-    moved. Several agy write there: per bucket the later `reset_time` wins,
-    for the same one the lower `remaining_fraction`; buckets a reading lacks
-    stay, and so does the plan. Input without a `quota` object, or no `jq`:
-    the file is left alone, exit 0.
-  - `helpers/agy-limits.sh`: prints that file on one line (nothing before the
-    first save), exit 0; 127 when agy isn't installed: `agy` (or
+  - `helpers/agy-limits.sh`: in a temporary folder, stdin closed, one 25 s
+    deadline for all three (under `exec`'s 30 s): `agy --version`, below 1.1.11
+    or unreadable → `{"problem":"old-version"}`; `agy models`, the sign-in
+    check, failing with "sign in" → `signed-out`, otherwise → `unreachable`;
+    then `agy -p /usage --output-format json`, its JSON line printed as is. A
+    hung agy is killed. 127 when agy isn't installed: `agy` (or
     `HERDR_USAGE_AGY_BIN`) not on PATH and no `~/.local/bin/agy`.
   - `helpers/awk/`: the awk programs the helpers run; `json-field.awk` (a
     number after a key, and whether a key is one of a Pi message's own fields)
@@ -358,10 +355,10 @@ on the bar and in the panel. The only key it reads is the OpenCode Go key.
   `opencode stats`' reply reaches the mod whole (counts, costs, model and tool
   names, dates; no message text), and the mod uses its token numbers. Never
   runs `pi`.
-- Antigravity: `agy-statusline.sh` gets agy's status line JSON, which holds
-  the conversation's details (folder, ids, transcript path, email), and keeps
-  only `quota`, `plan_tier` and the time. `agy-limits.sh` reads that file. It
-  never runs `agy`.
+- Antigravity: `agy-limits.sh` runs `agy models` and `agy -p /usage`, a
+  read-only slash command agy answers itself: 0 tokens, no conversation. Only
+  percentages and reset times are used. `--log-file` keeps agy from adding a
+  log of its own each time.
 - Sends no prompt and starts no turn: no model usage.
 - Changes no Claude Code, Codex, OpenCode or Pi settings.
 
@@ -488,17 +485,15 @@ on the bar and in the panel. The only key it reads is the OpenCode Go key.
   panel and none of its numbers is on the bar (each minute, on a focus change,
   on hovering after 10 s); then only for Claude Code, never running the helper
   for another agent.
-- agy gives its quota to nothing but its status line command, so the numbers
-  are as old as the last line agy drew (shown by `observedAt`, dimmed after
-  15 minutes). A bucket whose reset has passed since then shows `—`, as any
-  provider's does: the mod doesn't guess a 0%. Unknown to the mod for now: other buckets
-  than these four, and whether agy ever sends `reset_in_seconds` without
-  `reset_time`. The stdin shape (`quota.<bucket>.remaining_fraction`,
-  `reset_time`, `reset_in_seconds`, `plan_tier`) is from the bilipp fork,
-  not checked here against a live agy.
-- Several agy can run at once, one with numbers seen a while ago: a later
-  reset is a newer window, and within the same window usage only grows, so the
-  most used is the newest.
+- Signed out, `agy -p` opens Google's sign-in page in the browser (seen on
+  1.5.17, also with no terminal, `CI` or `NO_BROWSER`): never send `/usage`
+  before `agy models`, which fails at once without opening anything.
+- Before 1.1.11 `agy -p /usage` is an ordinary prompt and spends quota: never
+  send it to an agy whose version wasn't checked.
+- `--print-timeout` doesn't bound agy's wait for a sign-in: the helper's own
+  deadline does.
+- Checked on agy 1.5.17 with the Starter plan, which has weekly buckets only;
+  `gemini-5h` and `3p-5h` are from the bilipp fork.
 - agy installs to `~/.local/bin`, which a login PATH Herdr starts with may
   not hold: that path counts as installed too.
 - Labels are English.

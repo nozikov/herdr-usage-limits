@@ -8,11 +8,10 @@ import { PROVIDERS } from "../providers/index.js";
 import { NOW } from "./_util.js";
 
 const LATER = new Date((NOW + 3 * 86400) * 1000).toISOString();
-const bucket = (remaining) => ({ remaining_fraction: remaining, reset_time: LATER });
-const reading = (at = NOW - 300) => agy.parse(JSON.stringify({
-  at, plan: "Antigravity Starter Quota",
-  quota: { "gemini-5h": bucket(0.9), "gemini-weekly": bucket(0.4), "3p-5h": bucket(0.5), "3p-weekly": bucket(1) },
-}), NOW);
+const bucket = (id, remaining) => ({ id, remaining_fraction: remaining, reset_time: LATER });
+const BUCKETS = [bucket("gemini-5h", 0.9), bucket("gemini-weekly", 0.4), bucket("3p-5h", 0.5), bucket("3p-weekly", 1)];
+const reading = (at = NOW - 300) => agy.parse(JSON.stringify({ status: "SUCCESS", command: { data: { groups: [{ buckets: BUCKETS }] } } }), at);
+const signedOut = () => agy.parse(JSON.stringify({ problem: "signed-out" }), NOW);
 const gone = { report: null, lastGood: null, installed: false };
 const STATES = (report = reading()) => ({
   claude: gone, codex: gone, opencode: gone, "opencode-go": gone, pi: gone,
@@ -45,9 +44,9 @@ test("settings: every window listed, the others' boxes unticked until ticked, an
   assert.equal(agyRow(toggleWindow(DEFAULTS, "agy", "3p-weekly", true)).windows[3].on, true);
 });
 
-test("panel: every window, the others' too, with the plan and the reading's age", () => {
+test("panel: every window, the others' too, with the reading's age and no plan", () => {
   const g = cardModel(STATES(), NOW, PROVIDERS, DEFAULTS).groups.find((x) => x.providerId === "agy");
-  assert.deepEqual([g.plan, g.status, g.dim], ["Starter", "updated 5 min ago", false]);
+  assert.deepEqual([g.plan, g.status, g.dim], [null, "updated 5 min ago", false]);
   assert.deepEqual(g.rows.map((r) => [r.long, r.percent]), [["5-hour", "10%"], ["Weekly", "60%"], ["5-hour · others", "50%"], ["Weekly · others", "0%"]]);
 });
 
@@ -57,11 +56,11 @@ test("an old reading is dimmed on the bar and in the panel", () => {
   assert.equal(cardModel(st, NOW, PROVIDERS, DEFAULTS).groups.find((x) => x.providerId === "agy").dim, true);
 });
 
-test("installed, no reading saved yet: the panel says to open agy", () => {
-  const st = STATES(agy.parse("", NOW));
+test("signed out: the panel and the settings say to sign in", () => {
+  const st = STATES(signedOut());
   const g = cardModel(st, NOW, PROVIDERS, DEFAULTS).groups.find((x) => x.providerId === "agy");
-  assert.deepEqual([g.status, g.failed, g.rows], ["Open agy once to see its limits", true, []]);
-  assert.equal(agyRow(DEFAULTS, st).reason, "Open agy once to see its limits");
+  assert.deepEqual([g.status, g.failed, g.rows], ["Sign in to agy to see its limits", true, []]);
+  assert.equal(agyRow(DEFAULTS, st).reason, "Sign in to agy to see its limits");
 });
 
 test("not installed: nowhere on the bar or in the panel, greyed in the settings like any other", () => {
