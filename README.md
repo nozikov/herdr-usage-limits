@@ -81,7 +81,9 @@ fold. One you haven't used in 7 days isn't shown.
 
 **OpenCode Go** is a separate block: its rolling 5-hour window, the weekly window that
 resets Monday 00:00 UTC, and the monthly allowance, each with the percent OpenCode
-reports. When no key is found in OpenCode's or Pi's `auth.json`, or the key's workspace
+reports. OpenCode 2 reads its active Go credential with `opencode auth export`
+(requires `jq`); the CLI is also searched for in standard install paths. The legacy
+`auth.json` key is used only as a fallback. When no key is found, or its workspace
 doesn't subscribe to Go, the block is left out rather than guessed at.
 
 Codex's session block includes context, calls and compactions. Embedded Codex and older
@@ -242,9 +244,12 @@ Nothing to set up: install `agy` (1.1.11 or newer), sign in once, and its limits
 
 - `sh`, your `claude` CLI, your `codex` CLI and your `agy` CLI, each briefly, every 5 minutes. They use their own sign-ins and talk to Anthropic, OpenAI and Google. Apart from the OpenCode Go request below, the mod makes no network requests itself.
 - `curl`, once every 5 minutes, to `https://opencode.ai/zen/go/v1/usage`, with the
-  personal API key from `$HERDR_USAGE_OPENCODE_GO_KEY`, or from the `opencode-go` (or
-  `opencode`) entry of `~/.local/share/opencode/auth.json`, `~/.config/opencode/auth.json`
-  or `~/.pi/agent/auth.json`. OAuth access tokens are not used, as the mod can't refresh
+  personal API key from `$HERDR_USAGE_OPENCODE_GO_KEY`, or OpenCode 2's active Go
+  credential from `opencode auth export opencode-go` (requires `jq`). It searches for
+  the CLI on `PATH` and in `~/.opencode/bin`, `~/.local/bin`, `/opt/homebrew/bin` and
+  `/usr/local/bin`. If export is unavailable or has no active key, it falls back to the
+  `opencode-go` (or `opencode`) entry of `~/.local/share/opencode/auth.json`,
+  `~/.config/opencode/auth.json` or `~/.pi/agent/auth.json`. OAuth access tokens are not used, as the mod can't refresh
   them. `HERDR_USAGE_OPENCODE_GO_AUTH` picks another file and `HERDR_USAGE_OPENCODE_GO_ORG`
   adds a workspace header. The key goes to curl on stdin and stays out of `ps` and disk.
   This is the only request the mod makes itself; only percentages and reset times come back.

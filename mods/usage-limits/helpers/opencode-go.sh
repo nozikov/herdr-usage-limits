@@ -18,7 +18,21 @@ key_of() {
   return 0
 }
 
+opencode_bin=${HERDR_USAGE_OPENCODE_BIN:-}
+if [ -z "$opencode_bin" ]; then
+  opencode_bin=$(command -v opencode 2>/dev/null || true)
+  if [ -z "$opencode_bin" ]; then
+    for candidate in "$HOME/.opencode/bin/opencode" "$HOME/.local/bin/opencode" /opt/homebrew/bin/opencode /usr/local/bin/opencode; do
+      if [ -x "$candidate" ]; then opencode_bin=$candidate; break; fi
+    done
+  fi
+fi
+
 key=${HERDR_USAGE_OPENCODE_GO_KEY:-}
+if [ -z "$key" ] && [ -n "$opencode_bin" ] && command -v jq >/dev/null 2>&1; then
+  exported=$("$opencode_bin" auth export opencode-go 2>/dev/null) || exported=
+  key=$(printf '%s' "$exported" | jq -r '.[]? | select(.active == true) | .key // empty' 2>/dev/null | head -n 1)
+fi
 if [ -z "$key" ]; then
   set -- "$HERDR_USAGE_OPENCODE_GO_AUTH" \
     "${XDG_DATA_HOME:-$HOME/.local/share}/opencode/auth.json" \

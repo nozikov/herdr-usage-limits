@@ -1,5 +1,10 @@
 #!/bin/sh
 here=$(dirname "$0")
+if [ "$1" = "auth" ] && [ "$2" = "export" ] && [ "$3" = "opencode-go" ]; then
+  [ "$FAKE_OPENCODE" != fail ] || { echo "boom" >&2; exit 1; }
+  printf '%s\n' '[{"active":false,"key":"inactive-fake-key"},{"active":true,"key":"active-fake-key"}]'
+  exit 0
+fi
 days=
 while [ $# -gt 0 ]; do
   if [ "$1" = "--days" ]; then days=$2; fi
