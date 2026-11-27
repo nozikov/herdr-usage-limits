@@ -150,6 +150,48 @@ test("session helper, codex: two open files without an exact binding are ambiguo
 
 const runSession = (app, pid, env) => session([app, pid], env);
 
+function opencodeGoHome() {
+  const home = mkdtempSync(join(tmpdir(), "ul-opencode-go-"));
+  const bin = join(home, ".opencode", "bin");
+  const tempbin = join(home, "tempbin");
+  mkdirSync(bin, { recursive: true });
+  mkdirSync(tempbin);
+  copyFileSync(join(HERE, "fake-cli", "opencode"), join(bin, "opencode"));
+  chmodSync(join(bin, "opencode"), 0o755);
+  const auth = join(home, ".local", "share", "opencode");
+  mkdirSync(auth, { recursive: true });
+  writeFileSync(join(auth, "auth.json"), '{"opencode-go":{"key":"stale-legacy-key"}}');
+  const captured = join(home, "curl-config");
+  writeFileSync(join(tempbin, "curl"),
+    `#!/bin/sh\ncat >"${captured}"\nprintf '%s\\n200' '{"ok":true}'\n`, { mode: 0o755 });
+  return { home, tempbin, captured };
+}
+
+test("opencode-go helper: prefers active OpenCode 2 credential over stale legacy key", () => {
+  const h = opencodeGoHome();
+  const r = run("opencode-go.sh", { HOME: h.home, PATH: `${h.tempbin}:/usr/bin:/bin` });
+  assert.equal(r.status, 0);
+  assert.equal(JSON.parse(r.stdout.trim()).ok, true);
+  const config = readFileSync(h.captured, "utf8");
+  assert.match(config, /Bearer active-fake-key/);
+  assert.doesNotMatch(config, /stale-legacy-key|inactive-fake-key/);
+});
+
+test("opencode-go helper: failed auth export falls back to legacy auth.json", () => {
+  const h = opencodeGoHome();
+  const r = run("opencode-go.sh", { HOME: h.home, PATH: `${h.tempbin}:/usr/bin:/bin`, FAKE_OPENCODE: "fail" });
+  assert.equal(r.status, 0);
+  assert.match(readFileSync(h.captured, "utf8"), /Bearer stale-legacy-key/);
+});
+
+test("opencode-go helper: accepts active OpenCode OAuth access token", () => {
+  const h = opencodeGoHome();
+  const r = run("opencode-go.sh", { HOME: h.home, PATH: `${h.tempbin}:/usr/bin:/bin`, FAKE_OPENCODE_GO_EMPTY: "1", FAKE_OPENCODE_OAUTH: "1" });
+  assert.equal(r.status, 0);
+  assert.match(readFileSync(h.captured, "utf8"), /Bearer active-oauth-token/);
+  assert.doesNotMatch(readFileSync(h.captured, "utf8"), /stale-legacy-key/);
+});
+
 function piHome(files) {
   const home = mkdtempSync(join(tmpdir(), "ul-pi-"));
   const dir = join(home, ".pi", "agent", "sessions", "--home-demo-project--");
