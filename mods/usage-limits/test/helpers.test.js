@@ -184,6 +184,14 @@ test("opencode-go helper: failed auth export falls back to legacy auth.json", ()
   assert.match(readFileSync(h.captured, "utf8"), /Bearer stale-legacy-key/);
 });
 
+test("opencode-go helper: accepts active OpenCode OAuth access token", () => {
+  const h = opencodeGoHome();
+  const r = run("opencode-go.sh", { HOME: h.home, PATH: `${h.tempbin}:/usr/bin:/bin`, FAKE_OPENCODE_GO_EMPTY: "1", FAKE_OPENCODE_OAUTH: "1" });
+  assert.equal(r.status, 0);
+  assert.match(readFileSync(h.captured, "utf8"), /Bearer active-oauth-token/);
+  assert.doesNotMatch(readFileSync(h.captured, "utf8"), /stale-legacy-key/);
+});
+
 function piHome(files) {
   const home = mkdtempSync(join(tmpdir(), "ul-pi-"));
   const dir = join(home, ".pi", "agent", "sessions", "--home-demo-project--");

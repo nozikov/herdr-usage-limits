@@ -30,8 +30,11 @@ fi
 
 key=${HERDR_USAGE_OPENCODE_GO_KEY:-}
 if [ -z "$key" ] && [ -n "$opencode_bin" ] && command -v jq >/dev/null 2>&1; then
-  exported=$("$opencode_bin" auth export opencode-go 2>/dev/null) || exported=
-  key=$(printf '%s' "$exported" | jq -r '.[]? | select(.active == true) | .key // empty' 2>/dev/null | head -n 1)
+  for name in opencode-go opencode; do
+    exported=$("$opencode_bin" auth export "$name" 2>/dev/null) || continue
+    key=$(printf '%s' "$exported" | jq -r '.[]? | select(.active == true) | (if .value.type == "oauth" then .value.access elif .value.type == "key" then .value.key else .key end) // empty' 2>/dev/null | head -n 1)
+    [ -n "$key" ] && break
+  done
 fi
 if [ -z "$key" ]; then
   set -- "$HERDR_USAGE_OPENCODE_GO_AUTH" \
